@@ -13,7 +13,7 @@ Selecting from locally installed system fonts requires a Chromium-based browser,
 
 ## Create your overlay
 
-1. Install [DataPuller](https://github.com/ReadieFur/BSDataPuller) in Beat Saber.
+1. Install [DataPuller](https://github.com/WentTheFox/BSDataPuller) in Beat Saber.
 2. Start Beat Saber and make sure DataPuller is running.
 3. Open [bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net).
 4. Use the settings panel to choose the overlay position and the information you want to display.
