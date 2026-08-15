@@ -3,6 +3,7 @@ const host = params.get("host") || "127.0.0.1";
 const port = params.get("port") || "2946";
 const storageKey = "bs-stream-overlay-settings-v1";
 const isOverlayMode = params.get("overlay") === "1";
+const referenceCanvas = { width: 1920, height: 1080 };
 
 const defaultSettings = {
   position: "top-left",
@@ -273,6 +274,17 @@ function renderSettings() {
   }
 
   updateMarquees();
+}
+
+function updateResolutionScale() {
+  const scale = isOverlayMode
+    ? Math.min(window.innerWidth / referenceCanvas.width, window.innerHeight / referenceCanvas.height)
+    : 1;
+  const safeScale = Math.max(0.01, scale);
+
+  ui.preview.style.setProperty("--overlay-resolution-scale", String(safeScale));
+  if (isOverlayMode) ui.preview.style.setProperty("--overlay-edge-inset", `${34 * safeScale}px`);
+  else ui.preview.style.removeProperty("--overlay-edge-inset");
 }
 
 function getSelectedFontLabel() {
@@ -648,11 +660,15 @@ ui.coverArt.addEventListener("error", () => {
   ui.coverArt.parentElement.classList.remove("has-image");
 });
 
-window.addEventListener("resize", updateMarquees);
+window.addEventListener("resize", () => {
+  updateResolutionScale();
+  updateMarquees();
+});
 document.fonts?.ready.then(updateMarquees);
 
 document.documentElement.classList.toggle("overlay-mode", isOverlayMode);
 document.body.classList.toggle("overlay-mode", isOverlayMode);
+updateResolutionScale();
 renderSettings();
 if (!isOverlayMode) saveSettings();
 connectDataPuller();

@@ -732,6 +732,7 @@ select {
 }
 
 .overlay-preview {
+  --overlay-edge-inset: 34px;
   position: absolute;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 238px;
@@ -743,7 +744,7 @@ select {
   font-family: var(--overlay-font-family, var(--font));
   filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.85));
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(var(--overlay-resolution-scale, 1));
   transition:
     inset 320ms cubic-bezier(.2, .8, .2, 1),
     opacity 700ms ease,
@@ -761,27 +762,31 @@ select {
 .overlay-preview.is-ended {
   pointer-events: none;
   opacity: 0;
-  transform: translateY(30px);
+  transform: translateY(30px) scale(var(--overlay-resolution-scale, 1));
 }
 
 .overlay-preview[data-position="top-left"] {
-  top: 34px;
-  left: 34px;
+  top: var(--overlay-edge-inset);
+  left: var(--overlay-edge-inset);
+  transform-origin: top left;
 }
 
 .overlay-preview[data-position="top-right"] {
-  top: 34px;
-  right: 34px;
+  top: var(--overlay-edge-inset);
+  right: var(--overlay-edge-inset);
+  transform-origin: top right;
 }
 
 .overlay-preview[data-position="bottom-left"] {
-  bottom: 34px;
-  left: 34px;
+  bottom: var(--overlay-edge-inset);
+  left: var(--overlay-edge-inset);
+  transform-origin: bottom left;
 }
 
 .overlay-preview[data-position="bottom-right"] {
-  right: 34px;
-  bottom: 34px;
+  right: var(--overlay-edge-inset);
+  bottom: var(--overlay-edge-inset);
+  transform-origin: bottom right;
 }
 
 .song-block {
@@ -1159,27 +1164,28 @@ select {
   }
 
   .overlay-preview {
+    --overlay-edge-inset: 20px;
     width: calc(100% - 40px);
   }
 
   .overlay-preview[data-position="top-left"] {
-    top: 20px;
-    left: 20px;
+    top: var(--overlay-edge-inset);
+    left: var(--overlay-edge-inset);
   }
 
   .overlay-preview[data-position="top-right"] {
-    top: 20px;
-    right: 20px;
+    top: var(--overlay-edge-inset);
+    right: var(--overlay-edge-inset);
   }
 
   .overlay-preview[data-position="bottom-left"] {
-    bottom: 20px;
-    left: 20px;
+    bottom: var(--overlay-edge-inset);
+    left: var(--overlay-edge-inset);
   }
 
   .overlay-preview[data-position="bottom-right"] {
-    right: 20px;
-    bottom: 20px;
+    right: var(--overlay-edge-inset);
+    bottom: var(--overlay-edge-inset);
   }
 
   .overlay-preview {
