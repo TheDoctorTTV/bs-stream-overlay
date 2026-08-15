@@ -6,6 +6,10 @@ const isOverlayMode = params.get("overlay") === "1";
 
 const defaultSettings = {
   position: "top-left",
+  fontFamily: "",
+  fontWeight: 0,
+  fontScale: 100,
+  textTransform: "",
   visible: {
     cover: true,
     title: true,
@@ -25,6 +29,8 @@ const defaultSettings = {
 };
 const positionKeys = ["top-left", "top-right", "bottom-left", "bottom-right"];
 const visibleKeys = Object.keys(defaultSettings.visible);
+const fontWeightValues = [0, 400, 500, 600, 700, 800, 900];
+const textTransformValues = ["", "uppercase", "lowercase", "capitalize"];
 
 const state = {
   map: null,
@@ -34,6 +40,10 @@ const state = {
   reconnectTimer: null,
   openSockets: 0,
   intentionalClosures: new WeakSet(),
+  fonts: [],
+  fontsLoaded: false,
+  fontsLoading: null,
+  activeFontIndex: -1,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -49,6 +59,14 @@ const ui = {
   connectionDot: $("connection-dot"),
   connectionLabel: $("connection-label"),
   connectionDetail: $("connection-detail"),
+  fontPicker: $("font-picker"),
+  fontSearch: $("font-search"),
+  fontOptions: $("font-options"),
+  fontStatus: $("font-status"),
+  fontWeight: $("font-weight"),
+  fontSize: $("font-size"),
+  fontSizeValue: $("font-size-value"),
+  textTransform: $("text-transform"),
   coverArt: $("cover-art"),
   coverFallback: $("cover-fallback"),
   coverTime: $("cover-time"),
@@ -66,7 +84,6 @@ const ui = {
   accuracy: $("accuracy"),
   misses: $("misses"),
   health: $("health"),
-  healthMeter: $("health-meter"),
   healthFill: $("health-fill"),
 };
 
@@ -79,6 +96,10 @@ function loadSettings() {
 
   const settings = {
     position: saved?.position || defaultSettings.position,
+    fontFamily: normalizeFontFamily(saved?.fontFamily),
+    fontWeight: normalizeFontWeight(saved?.fontWeight),
+    fontScale: normalizeFontScale(saved?.fontScale),
+    textTransform: normalizeTextTransform(saved?.textTransform),
     visible: { ...defaultSettings.visible, ...(saved?.visible || {}) },
   };
 
@@ -91,12 +112,52 @@ function loadSettings() {
     settings.visible = Object.fromEntries(visibleKeys.map((key) => [key, shown.has(key)]));
   }
 
+  const urlFont = params.get("font");
+  if (urlFont !== null) settings.fontFamily = normalizeFontFamily(urlFont);
+
+  const urlWeight = params.get("weight");
+  if (urlWeight !== null) settings.fontWeight = normalizeFontWeight(urlWeight);
+
+  const urlScale = params.get("scale");
+  if (urlScale !== null) settings.fontScale = normalizeFontScale(urlScale);
+
+  const urlTextTransform = params.get("case");
+  if (urlTextTransform !== null) settings.textTransform = normalizeTextTransform(urlTextTransform);
+
   return settings;
+}
+
+function normalizeFontFamily(value) {
+  if (typeof value !== "string") return "";
+  return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 160);
+}
+
+function normalizeFontWeight(value) {
+  const weight = Number(value);
+  return fontWeightValues.includes(weight) ? weight : defaultSettings.fontWeight;
+}
+
+function normalizeFontScale(value) {
+  const scale = Math.round(Number(value) / 5) * 5;
+  return Number.isFinite(scale) ? Math.max(75, Math.min(150, scale)) : defaultSettings.fontScale;
+}
+
+function normalizeTextTransform(value) {
+  return textTransformValues.includes(value) ? value : defaultSettings.textTransform;
 }
 
 function applySettingsToUrl(url) {
   url.searchParams.set("position", state.settings.position);
   url.searchParams.set("show", visibleKeys.filter((key) => state.settings.visible[key] !== false).join(","));
+  if (state.settings.fontFamily) url.searchParams.set("font", state.settings.fontFamily);
+  else url.searchParams.delete("font");
+  if (state.settings.fontWeight) url.searchParams.set("weight", String(state.settings.fontWeight));
+  else url.searchParams.delete("weight");
+  if (state.settings.fontScale !== defaultSettings.fontScale) {
+    url.searchParams.set("scale", String(state.settings.fontScale));
+  } else url.searchParams.delete("scale");
+  if (state.settings.textTransform) url.searchParams.set("case", state.settings.textTransform);
+  else url.searchParams.delete("case");
   url.searchParams.delete("demo");
   return url;
 }
@@ -142,6 +203,18 @@ function normalizeHealth(value) {
   return health <= 1 ? health * 100 : health;
 }
 
+function getHealthColor(health) {
+  const stops = [
+    { value: 0, color: [239, 61, 85] },
+    { value: 50, color: [242, 202, 58] },
+    { value: 100, color: [61, 226, 111] },
+  ];
+  const start = health <= 50 ? stops[0] : stops[1];
+  const end = health <= 50 ? stops[1] : stops[2];
+  const progress = (health - start.value) / (end.value - start.value);
+  return start.color.map((channel, index) => Math.round(channel + (end.color[index] - channel) * progress));
+}
+
 let marqueeFrame = null;
 
 function updateMarquees() {
@@ -168,6 +241,20 @@ function updateMarquees() {
 function renderSettings() {
   ui.preview.dataset.position = state.settings.position;
   ui.preview.classList.toggle("without-cover", state.settings.visible.cover === false);
+  ui.preview.style.setProperty(
+    "--overlay-font-family",
+    state.settings.fontFamily ? `${JSON.stringify(state.settings.fontFamily)}, var(--font)` : "var(--font)",
+  );
+  ui.preview.style.setProperty("--overlay-text-scale", String(state.settings.fontScale / 100));
+  ui.preview.style.setProperty("--overlay-font-weight", String(state.settings.fontWeight || 400));
+  ui.preview.style.setProperty("--overlay-text-transform", state.settings.textTransform || "none");
+  ui.preview.classList.toggle("has-custom-font-weight", Boolean(state.settings.fontWeight));
+  ui.preview.classList.toggle("has-custom-text-transform", Boolean(state.settings.textTransform));
+
+  ui.fontWeight.value = String(state.settings.fontWeight);
+  ui.fontSize.value = String(state.settings.fontScale);
+  ui.fontSizeValue.value = `${state.settings.fontScale}%`;
+  ui.textTransform.value = state.settings.textTransform;
 
   document.querySelectorAll(".position-grid button[data-position]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.position === state.settings.position));
@@ -181,7 +268,112 @@ function renderSettings() {
     element.classList.toggle("is-hidden", state.settings.visible[element.dataset.preview] === false);
   });
 
+  if (document.activeElement !== ui.fontSearch) {
+    ui.fontSearch.value = getSelectedFontLabel();
+  }
+
   updateMarquees();
+}
+
+function getSelectedFontLabel() {
+  if (!state.settings.fontFamily) return "";
+  return state.fonts.find(({ family }) => family === state.settings.fontFamily)?.label || state.settings.fontFamily;
+}
+
+function setFontPickerOpen(open) {
+  ui.fontPicker.classList.toggle("is-open", open);
+  ui.fontOptions.hidden = !open;
+  ui.fontSearch.setAttribute("aria-expanded", String(open));
+  if (!open) {
+    state.activeFontIndex = -1;
+    ui.fontSearch.removeAttribute("aria-activedescendant");
+  }
+}
+
+function getFilteredFonts() {
+  const query = normalizeFontFamily(ui.fontSearch.value);
+  if (!query || query === getSelectedFontLabel()) return state.fonts;
+  const normalizedQuery = query.toLocaleLowerCase();
+  return state.fonts.filter(({ label }) => label.toLocaleLowerCase().includes(normalizedQuery));
+}
+
+function renderFontOptions() {
+  const fonts = getFilteredFonts();
+  ui.fontOptions.replaceChildren();
+  state.activeFontIndex = Math.min(state.activeFontIndex, fonts.length - 1);
+
+  fonts.forEach(({ family, label }, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.id = `font-option-${index}`;
+    button.className = "font-option";
+    button.role = "option";
+    button.dataset.family = family;
+    button.setAttribute("aria-selected", String(family === state.settings.fontFamily));
+    button.classList.toggle("is-active", index === state.activeFontIndex);
+    button.textContent = label;
+    button.style.fontFamily = family ? `${JSON.stringify(family)}, var(--font)` : "var(--font)";
+    button.addEventListener("click", () => selectFont(family));
+    ui.fontOptions.append(button);
+  });
+
+  if (!fonts.length) {
+    const empty = document.createElement("p");
+    empty.className = "font-options__empty";
+    empty.textContent = state.fontsLoading
+      ? "Waiting for local font permission…"
+      : state.fontsLoaded
+        ? state.fonts.length
+          ? "No installed fonts match that search."
+          : "No local fonts were returned by the browser."
+        : "Allow local font access to load installed fonts.";
+    ui.fontOptions.append(empty);
+  }
+
+  setFontPickerOpen(true);
+}
+
+function selectFont(family) {
+  state.settings.fontFamily = normalizeFontFamily(family);
+  ui.fontSearch.value = getSelectedFontLabel();
+  setFontPickerOpen(false);
+  saveSettings();
+  renderSettings();
+}
+
+async function loadLocalFonts() {
+  if (state.fontsLoaded) return;
+  if (state.fontsLoading) return state.fontsLoading;
+
+  if (typeof window.queryLocalFonts !== "function") {
+    ui.fontStatus.textContent = "This browser does not provide local font access.";
+    renderFontOptions();
+    return;
+  }
+
+  ui.fontStatus.textContent = "Loading installed fonts…";
+  state.fontsLoading = window.queryLocalFonts()
+    .then((fontData) => {
+      const families = [...new Set(fontData.map(({ family }) => normalizeFontFamily(family)).filter(Boolean))]
+        .sort((a, b) => a.localeCompare(b));
+      state.fonts = families.map((family) => ({ family, label: family }));
+      state.fontsLoaded = true;
+      ui.fontStatus.textContent = families.length
+        ? `${families.length.toLocaleString()} local fonts available.`
+        : "No local fonts were returned by the browser.";
+    })
+    .catch((error) => {
+      state.fontsLoaded = false;
+      ui.fontStatus.textContent = error?.name === "NotAllowedError"
+        ? "Local font access was not allowed. Click the search box to try again."
+        : "Local font access failed. Click the search box to try again.";
+    })
+    .finally(() => {
+      state.fontsLoading = null;
+      if (!ui.fontOptions.hidden) renderFontOptions();
+    });
+
+  return state.fontsLoading;
 }
 
 function renderMap() {
@@ -229,9 +421,11 @@ function renderLive() {
   ui.accuracy.textContent = Number(live.Accuracy || 0).toFixed(2);
   ui.misses.textContent = formatNumber(live.Misses);
   const health = Math.max(0, Math.min(100, normalizeHealth(live.PlayerHealth)));
+  const [red, green, blue] = getHealthColor(health);
   ui.health.textContent = formatNumber(health);
   ui.healthFill.style.width = `${health}%`;
-  ui.healthMeter.dataset.level = health <= 25 ? "low" : health < 70 ? "medium" : "high";
+  ui.healthFill.style.setProperty("--health-color", `rgb(${red} ${green} ${blue})`);
+  ui.healthFill.style.setProperty("--health-glow", `rgb(${red} ${green} ${blue} / 0.52)`);
 }
 
 function setConnection(status, label) {
@@ -307,6 +501,66 @@ document.querySelectorAll("[data-toggle]").forEach((input) => {
   });
 });
 
+ui.fontWeight.addEventListener("change", () => {
+  state.settings.fontWeight = normalizeFontWeight(ui.fontWeight.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.fontSize.addEventListener("input", () => {
+  state.settings.fontScale = normalizeFontScale(ui.fontSize.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.textTransform.addEventListener("change", () => {
+  state.settings.textTransform = normalizeTextTransform(ui.textTransform.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.fontSearch.addEventListener("focus", () => {
+  ui.fontSearch.select();
+  renderFontOptions();
+});
+ui.fontSearch.addEventListener("click", () => {
+  loadLocalFonts();
+  renderFontOptions();
+});
+ui.fontSearch.addEventListener("input", () => {
+  state.activeFontIndex = -1;
+  renderFontOptions();
+});
+ui.fontSearch.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    ui.fontSearch.value = getSelectedFontLabel();
+    setFontPickerOpen(false);
+    ui.fontSearch.blur();
+    return;
+  }
+
+  if (!["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) return;
+  event.preventDefault();
+  const fonts = getFilteredFonts();
+  if (!fonts.length) return;
+
+  if (event.key === "Enter") {
+    if (state.activeFontIndex >= 0) selectFont(fonts[state.activeFontIndex].family);
+    return;
+  }
+
+  const direction = event.key === "ArrowDown" ? 1 : -1;
+  state.activeFontIndex = (state.activeFontIndex + direction + fonts.length) % fonts.length;
+  renderFontOptions();
+  const activeOption = $(`font-option-${state.activeFontIndex}`);
+  ui.fontSearch.setAttribute("aria-activedescendant", activeOption.id);
+  activeOption.scrollIntoView({ block: "nearest" });
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (!ui.fontPicker.contains(event.target)) setFontPickerOpen(false);
+});
+
 $("reset-settings").addEventListener("click", () => {
   state.settings = structuredClone(defaultSettings);
   saveSettings();
@@ -355,17 +609,26 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     const loadedUrl = new URL(ui.loadSettingsUrl.value.trim(), window.location.href);
     const loadedPosition = loadedUrl.searchParams.get("position");
     const loadedVisible = loadedUrl.searchParams.get("show");
+    const loadedFont = loadedUrl.searchParams.get("font");
+    const loadedWeight = loadedUrl.searchParams.get("weight");
+    const loadedScale = loadedUrl.searchParams.get("scale");
+    const loadedTextTransform = loadedUrl.searchParams.get("case");
 
     if (loadedPosition !== null && !positionKeys.includes(loadedPosition)) {
       throw new Error("That URL contains an unsupported overlay position.");
     }
 
-    if (loadedPosition === null && loadedVisible === null) {
+    if (loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
+      loadedScale === null && loadedTextTransform === null) {
       throw new Error("That URL does not contain overlay settings.");
     }
 
     const nextSettings = structuredClone(state.settings);
     if (loadedPosition !== null) nextSettings.position = loadedPosition;
+    if (loadedFont !== null) nextSettings.fontFamily = normalizeFontFamily(loadedFont);
+    if (loadedWeight !== null) nextSettings.fontWeight = normalizeFontWeight(loadedWeight);
+    if (loadedScale !== null) nextSettings.fontScale = normalizeFontScale(loadedScale);
+    if (loadedTextTransform !== null) nextSettings.textTransform = normalizeTextTransform(loadedTextTransform);
 
     if (loadedVisible !== null) {
       const shown = new Set(loadedVisible.split(",").filter((key) => visibleKeys.includes(key)));

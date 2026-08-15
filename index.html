@@ -56,6 +56,56 @@
         </div>
       </section>
 
+      <section class="setting-section font-setting-section" aria-labelledby="font-heading">
+        <div class="section-heading">
+          <h2 id="font-heading">Text font</h2>
+          <p>Search the fonts installed on this system.</p>
+        </div>
+
+        <div class="font-picker" id="font-picker">
+          <label class="font-search" for="font-search">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="6.5"></circle>
+              <path d="m16 16 4 4"></path>
+            </svg>
+            <input type="search" id="font-search" placeholder="Search installed fonts" autocomplete="off"
+              role="combobox" aria-autocomplete="list" aria-controls="font-options" aria-expanded="false" />
+          </label>
+          <div class="font-options" id="font-options" role="listbox" aria-label="Installed fonts" hidden></div>
+          <p class="font-status" id="font-status" aria-live="polite">Click the search box to allow local font access.</p>
+        </div>
+
+        <div class="type-controls">
+          <label class="type-control" for="font-weight">
+            <span><b>Font weight</b><small>Thickness of overlay text</small></span>
+            <select id="font-weight">
+              <option value="0">Original</option>
+              <option value="400">Regular</option>
+              <option value="500">Medium</option>
+              <option value="600">Semi bold</option>
+              <option value="700">Bold</option>
+              <option value="800">Extra bold</option>
+              <option value="900">Black</option>
+            </select>
+          </label>
+
+          <label class="type-control type-control--range" for="font-size">
+            <span><b>Font size</b><output id="font-size-value" for="font-size">100%</output></span>
+            <input type="range" id="font-size" min="75" max="150" step="5" value="100" />
+          </label>
+
+          <label class="type-control" for="text-transform">
+            <span><b>Text case</b><small>Capitalization across the overlay</small></span>
+            <select id="text-transform">
+              <option value="">Original</option>
+              <option value="uppercase">UPPERCASE</option>
+              <option value="lowercase">lowercase</option>
+              <option value="capitalize">Title Case</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
       <section class="setting-section" aria-labelledby="song-heading">
         <div class="section-heading">
           <h2 id="song-heading">Song data</h2>

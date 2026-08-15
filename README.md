@@ -7,6 +7,10 @@ BS Stream Overlay is an open-source, customizable Beat Saber browser overlay pow
 - DataPuller installed in Beat Saber
 - Streaming software that supports browser sources, such as OBS Studio, Streamlabs Desktop, Meld Studio, or similar software
 
+## Font selection compatibility
+
+Selecting from locally installed system fonts requires a Chromium-based browser, such as Google Chrome, Microsoft Edge, Brave, or Opera/OperaGX.
+
 ## Create your overlay
 
 1. Install [DataPuller](https://github.com/ReadieFur/BSDataPuller) in Beat Saber.
@@ -18,9 +22,3 @@ BS Stream Overlay is an open-source, customizable Beat Saber browser overlay pow
 7. Paste the copied URL into the browser source.
 
 Your selected settings are stored in the generated URL, so the browser source will use the same layout and visible fields. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
-
-## Browser connection permissions
-
-The hosted page connects directly to DataPuller at the loopback address `127.0.0.1`. Your browser may ask for permission to access devices or services on your local network; allow that permission for the overlay to receive live data.
-
-Connections to another computer through a private-network address such as `192.168.1.10` may still be blocked from the HTTPS page. Run the settings page over local HTTP when DataPuller is on a different computer or when your streaming software does not permit the loopback connection.
