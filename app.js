@@ -204,6 +204,15 @@ function normalizeHealth(value) {
   return health <= 1 ? health * 100 : health;
 }
 
+function hasLoadedMap(map) {
+  if (!map) return false;
+  return Boolean(
+    String(map.SongName || "").trim() ||
+    Number(map.Duration) > 0 ||
+    String(map.Difficulty || "").trim()
+  );
+}
+
 function getHealthColor(health) {
   const stops = [
     { value: 0, color: [239, 61, 85] },
@@ -392,9 +401,12 @@ function renderMap() {
   const map = state.map;
   if (!map) return;
 
+  const awaitingData = !hasLoadedMap(map);
   const levelEnded = Boolean(map.LevelFinished || map.LevelFailed || map.LevelQuit);
+  const hidden = levelEnded || (isOverlayMode && awaitingData);
+  ui.preview.classList.toggle("is-awaiting-data", isOverlayMode && awaitingData);
   ui.preview.classList.toggle("is-ended", levelEnded);
-  ui.preview.setAttribute("aria-hidden", String(levelEnded));
+  ui.preview.setAttribute("aria-hidden", String(hidden));
 
   const cover = normalizeCover(map.CoverImage);
   ui.songTitle.textContent = map.SongName || "Waiting for a song";
@@ -668,6 +680,7 @@ document.fonts?.ready.then(updateMarquees);
 
 document.documentElement.classList.toggle("overlay-mode", isOverlayMode);
 document.body.classList.toggle("overlay-mode", isOverlayMode);
+ui.preview.classList.toggle("is-awaiting-data", isOverlayMode);
 updateResolutionScale();
 renderSettings();
 if (!isOverlayMode) saveSettings();

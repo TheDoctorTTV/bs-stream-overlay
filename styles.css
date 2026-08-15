@@ -759,7 +759,8 @@ select {
   text-transform: var(--overlay-text-transform) !important;
 }
 
-.overlay-preview.is-ended {
+.overlay-preview.is-ended,
+.overlay-preview.is-awaiting-data {
   pointer-events: none;
   opacity: 0;
   transform: translateY(30px) scale(var(--overlay-resolution-scale, 1));
