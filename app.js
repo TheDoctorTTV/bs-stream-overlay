@@ -1,6 +1,7 @@
 const params = new URLSearchParams(window.location.search);
 const host = params.get("host") || "127.0.0.1";
 const port = params.get("port") || "2946";
+const heartRateHost = params.get("hrhost") || (params.has("host") ? host : "localhost");
 const storageKey = "bs-stream-overlay-settings-v1";
 const isOverlayMode = params.get("overlay") === "1";
 const referenceCanvas = { width: 1920, height: 1080 };
@@ -11,6 +12,12 @@ const defaultSettings = {
   fontWeight: 0,
   fontScale: 100,
   textTransform: "",
+  heartRate: {
+    enabled: false,
+    mode: "paired",
+    position: "top-right",
+    port: 65302,
+  },
   visible: {
     cover: true,
     title: true,
@@ -32,6 +39,7 @@ const positionKeys = ["top-left", "top-right", "bottom-left", "bottom-right"];
 const visibleKeys = Object.keys(defaultSettings.visible);
 const fontWeightValues = [0, 400, 500, 600, 700, 800, 900];
 const textTransformValues = ["", "uppercase", "lowercase", "capitalize"];
+const heartRateModeValues = ["paired", "standalone"];
 
 const state = {
   map: null,
@@ -41,6 +49,9 @@ const state = {
   reconnectTimer: null,
   openSockets: 0,
   intentionalClosures: new WeakSet(),
+  heartRate: null,
+  heartRateTimer: null,
+  heartRatePollingSignature: "",
   fonts: [],
   fontsLoaded: false,
   fontsLoading: null,
@@ -68,6 +79,17 @@ const ui = {
   fontSize: $("font-size"),
   fontSizeValue: $("font-size-value"),
   textTransform: $("text-transform"),
+  heartRateEnabled: $("heart-rate-enabled"),
+  heartRateOptions: $("heart-rate-options"),
+  heartRateMode: $("heart-rate-mode"),
+  heartRatePositionSettings: $("heart-rate-position-settings"),
+  heartRatePort: $("heart-rate-port"),
+  heartRateDot: $("heart-rate-dot"),
+  heartRateStatus: $("heart-rate-status"),
+  heartRatePaired: $("heart-rate-paired"),
+  heartRatePairedValue: $("heart-rate-paired-value"),
+  heartRateStandalone: $("heart-rate-standalone"),
+  heartRateStandaloneValue: $("heart-rate-standalone-value"),
   coverArt: $("cover-art"),
   coverFallback: $("cover-fallback"),
   coverTime: $("cover-time"),
@@ -101,6 +123,12 @@ function loadSettings() {
     fontWeight: normalizeFontWeight(saved?.fontWeight),
     fontScale: normalizeFontScale(saved?.fontScale),
     textTransform: normalizeTextTransform(saved?.textTransform),
+    heartRate: {
+      enabled: saved?.heartRate?.enabled === true,
+      mode: normalizeHeartRateMode(saved?.heartRate?.mode),
+      position: normalizePosition(saved?.heartRate?.position, defaultSettings.heartRate.position),
+      port: normalizePort(saved?.heartRate?.port),
+    },
     visible: { ...defaultSettings.visible, ...(saved?.visible || {}) },
   };
 
@@ -125,6 +153,20 @@ function loadSettings() {
   const urlTextTransform = params.get("case");
   if (urlTextTransform !== null) settings.textTransform = normalizeTextTransform(urlTextTransform);
 
+  const urlHeartRateMode = params.get("hr");
+  if (urlHeartRateMode !== null) {
+    settings.heartRate.enabled = heartRateModeValues.includes(urlHeartRateMode);
+    settings.heartRate.mode = normalizeHeartRateMode(urlHeartRateMode);
+  }
+
+  const urlHeartRatePosition = params.get("hrposition");
+  if (urlHeartRatePosition !== null) {
+    settings.heartRate.position = normalizePosition(urlHeartRatePosition, settings.heartRate.position);
+  }
+
+  const urlHeartRatePort = params.get("hrport");
+  if (urlHeartRatePort !== null) settings.heartRate.port = normalizePort(urlHeartRatePort);
+
   return settings;
 }
 
@@ -147,6 +189,21 @@ function normalizeTextTransform(value) {
   return textTransformValues.includes(value) ? value : defaultSettings.textTransform;
 }
 
+function normalizeHeartRateMode(value) {
+  return heartRateModeValues.includes(value) ? value : defaultSettings.heartRate.mode;
+}
+
+function normalizePosition(value, fallback = defaultSettings.position) {
+  return positionKeys.includes(value) ? value : fallback;
+}
+
+function normalizePort(value) {
+  const portNumber = Math.round(Number(value));
+  return Number.isFinite(portNumber) && portNumber >= 1 && portNumber <= 65535
+    ? portNumber
+    : defaultSettings.heartRate.port;
+}
+
 function applySettingsToUrl(url) {
   url.searchParams.set("position", state.settings.position);
   url.searchParams.set("show", visibleKeys.filter((key) => state.settings.visible[key] !== false).join(","));
@@ -159,6 +216,17 @@ function applySettingsToUrl(url) {
   } else url.searchParams.delete("scale");
   if (state.settings.textTransform) url.searchParams.set("case", state.settings.textTransform);
   else url.searchParams.delete("case");
+  if (state.settings.heartRate.enabled) {
+    url.searchParams.set("hr", state.settings.heartRate.mode);
+    url.searchParams.set("hrport", String(state.settings.heartRate.port));
+    if (state.settings.heartRate.mode === "standalone") {
+      url.searchParams.set("hrposition", state.settings.heartRate.position);
+    } else url.searchParams.delete("hrposition");
+  } else {
+    url.searchParams.delete("hr");
+    url.searchParams.delete("hrposition");
+    url.searchParams.delete("hrport");
+  }
   url.searchParams.delete("demo");
   return url;
 }
@@ -225,6 +293,16 @@ function getHealthColor(health) {
   return start.color.map((channel, index) => Math.round(channel + (end.color[index] - channel) * progress));
 }
 
+function getHeartRateColor(bpm) {
+  if (bpm <= 120) return [88, 232, 138];
+  if (bpm >= 180) return [255, 72, 96];
+  const progress = (bpm - 120) / 60;
+  const start = bpm <= 150 ? [88, 232, 138] : [255, 211, 77];
+  const end = bpm <= 150 ? [255, 211, 77] : [255, 72, 96];
+  const localProgress = bpm <= 150 ? progress * 2 : (progress - 0.5) * 2;
+  return start.map((channel, index) => Math.round(channel + (end[index] - channel) * localProgress));
+}
+
 let marqueeFrame = null;
 
 function updateMarquees() {
@@ -260,14 +338,33 @@ function renderSettings() {
   ui.preview.style.setProperty("--overlay-text-transform", state.settings.textTransform || "none");
   ui.preview.classList.toggle("has-custom-font-weight", Boolean(state.settings.fontWeight));
   ui.preview.classList.toggle("has-custom-text-transform", Boolean(state.settings.textTransform));
+  ui.heartRateStandalone.style.setProperty(
+    "--overlay-font-family",
+    state.settings.fontFamily ? `${JSON.stringify(state.settings.fontFamily)}, var(--font)` : "var(--font)",
+  );
+  ui.heartRateStandalone.style.setProperty("--overlay-text-scale", String(state.settings.fontScale / 100));
+  ui.heartRateStandalone.style.setProperty("--overlay-font-weight", String(state.settings.fontWeight || 400));
+  ui.heartRateStandalone.style.setProperty("--overlay-text-transform", state.settings.textTransform || "none");
+  ui.heartRateStandalone.classList.toggle("has-custom-font-weight", Boolean(state.settings.fontWeight));
+  ui.heartRateStandalone.classList.toggle("has-custom-text-transform", Boolean(state.settings.textTransform));
 
   ui.fontWeight.value = String(state.settings.fontWeight);
   ui.fontSize.value = String(state.settings.fontScale);
   ui.fontSizeValue.value = `${state.settings.fontScale}%`;
   ui.textTransform.value = state.settings.textTransform;
+  ui.heartRateEnabled.checked = state.settings.heartRate.enabled;
+  ui.heartRateOptions.hidden = !state.settings.heartRate.enabled;
+  ui.heartRateMode.value = state.settings.heartRate.mode;
+  ui.heartRatePort.value = String(state.settings.heartRate.port);
+  ui.heartRatePositionSettings.hidden = state.settings.heartRate.mode !== "standalone";
+  ui.heartRateStandalone.dataset.position = state.settings.heartRate.position;
 
   document.querySelectorAll(".position-grid button[data-position]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.position === state.settings.position));
+  });
+
+  document.querySelectorAll("[data-heart-rate-position]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.heartRatePosition === state.settings.heartRate.position));
   });
 
   document.querySelectorAll("[data-toggle]").forEach((input) => {
@@ -282,6 +379,8 @@ function renderSettings() {
     ui.fontSearch.value = getSelectedFontLabel();
   }
 
+  renderHeartRate();
+  syncHeartRatePolling();
   updateMarquees();
 }
 
@@ -292,8 +391,11 @@ function updateResolutionScale() {
   const safeScale = Math.max(0.01, scale);
 
   ui.preview.style.setProperty("--overlay-resolution-scale", String(safeScale));
+  ui.heartRateStandalone.style.setProperty("--overlay-resolution-scale", String(safeScale));
   if (isOverlayMode) ui.preview.style.setProperty("--overlay-edge-inset", `${34 * safeScale}px`);
   else ui.preview.style.removeProperty("--overlay-edge-inset");
+  if (isOverlayMode) ui.heartRateStandalone.style.setProperty("--overlay-edge-inset", `${34 * safeScale}px`);
+  else ui.heartRateStandalone.style.removeProperty("--overlay-edge-inset");
 }
 
 function getSelectedFontLabel() {
@@ -452,6 +554,88 @@ function renderLive() {
   ui.healthFill.style.setProperty("--health-glow", `rgb(${red} ${green} ${blue} / 0.52)`);
 }
 
+function renderHeartRate() {
+  const bpm = Number(state.heartRate) || 0;
+  const enabled = state.settings.heartRate.enabled;
+  const available = bpm > 0;
+  const paired = enabled && state.settings.heartRate.mode === "paired";
+  const standalone = enabled && state.settings.heartRate.mode === "standalone";
+  const shouldShowValue = !isOverlayMode || available;
+  const displayValue = available ? String(Math.round(bpm)) : "--";
+  const [red, green, blue] = getHeartRateColor(available ? bpm : 120);
+  const pulseDuration = available ? Math.max(0.35, Math.min(1.5, 60 / bpm)) : 1;
+
+  ui.heartRatePaired.hidden = !(paired && shouldShowValue);
+  ui.heartRateStandalone.hidden = !(standalone && shouldShowValue);
+  ui.preview.classList.toggle("has-paired-heart-rate", paired && shouldShowValue);
+  ui.heartRatePairedValue.textContent = displayValue;
+  ui.heartRateStandaloneValue.textContent = displayValue;
+
+  [ui.heartRatePaired, ui.heartRateStandalone].forEach((element) => {
+    element.classList.toggle("is-unavailable", !available);
+    element.style.setProperty("--heart-rate-color", `rgb(${red} ${green} ${blue})`);
+    element.style.setProperty("--heart-rate-glow", `rgb(${red} ${green} ${blue} / 0.48)`);
+    element.style.setProperty("--heart-rate-duration", `${pulseDuration.toFixed(3)}s`);
+  });
+}
+
+function stopHeartRatePolling() {
+  clearTimeout(state.heartRateTimer);
+  state.heartRateTimer = null;
+}
+
+function setHeartRateConnection(status, label) {
+  ui.heartRateDot.dataset.state = status;
+  ui.heartRateStatus.textContent = label;
+}
+
+function syncHeartRatePolling() {
+  const signature = state.settings.heartRate.enabled
+    ? `${heartRateHost}:${state.settings.heartRate.port}`
+    : "";
+  if (signature === state.heartRatePollingSignature) return;
+
+  stopHeartRatePolling();
+  state.heartRatePollingSignature = signature;
+  state.heartRate = null;
+  renderHeartRate();
+
+  if (!signature) {
+    setHeartRateConnection("offline", "Heart rate disabled");
+    return;
+  }
+
+  const poll = async () => {
+    if (state.heartRatePollingSignature !== signature) return;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1800);
+
+    try {
+      const response = await fetch(`http://${heartRateHost}:${state.settings.heartRate.port}/hr`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      if (!response.ok) throw new Error(`HRCounter returned ${response.status}`);
+      const bpm = Math.round(Number((await response.text()).trim()));
+      if (!Number.isFinite(bpm) || bpm <= 0 || bpm > 300) throw new Error("HRCounter returned no heart rate");
+      state.heartRate = bpm;
+      setHeartRateConnection("live", `HRCounter connected · ${bpm} BPM`);
+    } catch {
+      state.heartRate = null;
+      setHeartRateConnection("offline", `No HRCounter data on ${heartRateHost}:${state.settings.heartRate.port}`);
+    } finally {
+      clearTimeout(timeout);
+      renderHeartRate();
+      if (state.heartRatePollingSignature === signature) {
+        state.heartRateTimer = setTimeout(poll, 1000);
+      }
+    }
+  };
+
+  setHeartRateConnection("connecting", "Connecting to HRCounter");
+  poll();
+}
+
 function setConnection(status, label) {
   ui.connectionDot.dataset.state = status;
   ui.connectionLabel.textContent = label;
@@ -517,6 +701,14 @@ document.querySelectorAll(".position-grid button[data-position]").forEach((butto
   });
 });
 
+document.querySelectorAll("[data-heart-rate-position]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.settings.heartRate.position = button.dataset.heartRatePosition;
+    saveSettings();
+    renderSettings();
+  });
+});
+
 document.querySelectorAll("[data-toggle]").forEach((input) => {
   input.addEventListener("change", () => {
     state.settings.visible[input.dataset.toggle] = input.checked;
@@ -539,6 +731,24 @@ ui.fontSize.addEventListener("input", () => {
 
 ui.textTransform.addEventListener("change", () => {
   state.settings.textTransform = normalizeTextTransform(ui.textTransform.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.heartRateEnabled.addEventListener("change", () => {
+  state.settings.heartRate.enabled = ui.heartRateEnabled.checked;
+  saveSettings();
+  renderSettings();
+});
+
+ui.heartRateMode.addEventListener("change", () => {
+  state.settings.heartRate.mode = normalizeHeartRateMode(ui.heartRateMode.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.heartRatePort.addEventListener("change", () => {
+  state.settings.heartRate.port = normalizePort(ui.heartRatePort.value);
   saveSettings();
   renderSettings();
 });
@@ -637,14 +847,26 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     const loadedWeight = loadedUrl.searchParams.get("weight");
     const loadedScale = loadedUrl.searchParams.get("scale");
     const loadedTextTransform = loadedUrl.searchParams.get("case");
+    const loadedHeartRateMode = loadedUrl.searchParams.get("hr");
+    const loadedHeartRatePosition = loadedUrl.searchParams.get("hrposition");
+    const loadedHeartRatePort = loadedUrl.searchParams.get("hrport");
 
     if (loadedPosition !== null && !positionKeys.includes(loadedPosition)) {
       throw new Error("That URL contains an unsupported overlay position.");
     }
 
     if (loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
-      loadedScale === null && loadedTextTransform === null) {
+      loadedScale === null && loadedTextTransform === null && loadedHeartRateMode === null &&
+      loadedHeartRatePosition === null && loadedHeartRatePort === null) {
       throw new Error("That URL does not contain overlay settings.");
+    }
+
+    if (loadedHeartRateMode !== null && !heartRateModeValues.includes(loadedHeartRateMode)) {
+      throw new Error("That URL contains an unsupported heart rate display mode.");
+    }
+
+    if (loadedHeartRatePosition !== null && !positionKeys.includes(loadedHeartRatePosition)) {
+      throw new Error("That URL contains an unsupported heart rate position.");
     }
 
     const nextSettings = structuredClone(state.settings);
@@ -653,6 +875,12 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     if (loadedWeight !== null) nextSettings.fontWeight = normalizeFontWeight(loadedWeight);
     if (loadedScale !== null) nextSettings.fontScale = normalizeFontScale(loadedScale);
     if (loadedTextTransform !== null) nextSettings.textTransform = normalizeTextTransform(loadedTextTransform);
+    if (loadedHeartRateMode !== null) {
+      nextSettings.heartRate.enabled = true;
+      nextSettings.heartRate.mode = loadedHeartRateMode;
+    }
+    if (loadedHeartRatePosition !== null) nextSettings.heartRate.position = loadedHeartRatePosition;
+    if (loadedHeartRatePort !== null) nextSettings.heartRate.port = normalizePort(loadedHeartRatePort);
 
     if (loadedVisible !== null) {
       const shown = new Set(loadedVisible.split(",").filter((key) => visibleKeys.includes(key)));

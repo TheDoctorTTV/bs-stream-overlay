@@ -7,7 +7,7 @@
   <meta name="color-scheme" content="dark" />
   <meta name="theme-color" content="#0c0e11" />
   <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; connect-src ws: wss:" />
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; connect-src ws: wss: http: https:" />
   <title>Beat Saber Overlay Settings</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -196,6 +196,62 @@
         </div>
       </section>
 
+      <section class="setting-section heart-rate-settings" aria-labelledby="heart-rate-heading">
+        <div class="section-heading">
+          <h2 id="heart-rate-heading">Heart rate</h2>
+          <p>Read the current BPM from HRCounter's local server.</p>
+        </div>
+
+        <label class="toggle-row">
+          <span><b>Show heart rate</b><small>Add a live pulse readout</small></span>
+          <input type="checkbox" id="heart-rate-enabled" />
+          <i aria-hidden="true"></i>
+        </label>
+
+        <div class="heart-rate-options" id="heart-rate-options" hidden>
+          <label class="type-control" for="heart-rate-mode">
+            <span><b>Display</b><small>Attach it or position it independently</small></span>
+            <select id="heart-rate-mode">
+              <option value="paired">With song overlay</option>
+              <option value="standalone">On its own</option>
+            </select>
+          </label>
+
+          <div class="heart-rate-position" id="heart-rate-position-settings" hidden>
+            <span class="field-label">Heart rate position</span>
+            <div class="position-grid" role="group" aria-label="Heart rate overlay position">
+              <button type="button" data-heart-rate-position="top-left" aria-pressed="false">
+                <span class="corner corner--top-left"></span>
+                <b>Top left</b>
+              </button>
+              <button type="button" data-heart-rate-position="top-right" aria-pressed="true">
+                <span class="corner corner--top-right"></span>
+                <b>Top right</b>
+              </button>
+              <button type="button" data-heart-rate-position="bottom-left" aria-pressed="false">
+                <span class="corner corner--bottom-left"></span>
+                <b>Bottom left</b>
+              </button>
+              <button type="button" data-heart-rate-position="bottom-right" aria-pressed="false">
+                <span class="corner corner--bottom-right"></span>
+                <b>Bottom right</b>
+              </button>
+            </div>
+          </div>
+
+          <label class="type-control" for="heart-rate-port">
+            <span><b>HRCounter port</b><small>Default mod server port</small></span>
+            <input class="port-input" type="number" id="heart-rate-port" min="1" max="65535" value="65302"
+              inputmode="numeric" />
+          </label>
+
+          <div class="heart-rate-connection" aria-live="polite">
+            <span class="connection-dot" id="heart-rate-dot" data-state="offline"></span>
+            <span id="heart-rate-status">Waiting for HRCounter</span>
+          </div>
+        </div>
+      </section>
+
     </aside>
 
     <section class="preview-workspace" aria-labelledby="preview-heading">
@@ -268,6 +324,13 @@
             </div>
           </div>
 
+          <div class="heart-rate-paired" id="heart-rate-paired" hidden>
+            <svg class="heart-rate-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21s-8-4.9-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.1-8 11-8 11Z"></path>
+            </svg>
+            <b id="heart-rate-paired-value">--</b><span>BPM</span>
+          </div>
+
           <div class="health-meter" data-preview="health" id="health-meter">
             <div class="health-meter__label">
               <span>Health</span>
@@ -278,6 +341,13 @@
             </div>
           </div>
         </article>
+
+        <div class="heart-rate-standalone" id="heart-rate-standalone" data-position="top-right" hidden>
+          <svg class="heart-rate-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 21s-8-4.9-8-11a4.5 4.5 0 0 1 8-2.8A4.5 4.5 0 0 1 20 10c0 6.1-8 11-8 11Z"></path>
+          </svg>
+          <span class="heart-rate-copy"><b id="heart-rate-standalone-value">--</b><small>BPM</small></span>
+        </div>
 
         <div class="stage-label"></div>
       </div>

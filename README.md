@@ -1,10 +1,11 @@
 # BS Stream Overlay
 
-BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/ReadieFur/BSDataPuller). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, score, combo, rank, accuracy, misses, and health.
+BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/ReadieFur/BSDataPuller). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter) and appear with the song overlay or as a separately positioned element.
 
 ## Requirements
 
 - DataPuller installed in Beat Saber
+- HRCounter installed and its HTTP server enabled (optional, for heart rate)
 - Streaming software that supports browser sources, such as OBS Studio, Streamlabs Desktop, Meld Studio, or similar software
 
 ## Font selection compatibility
