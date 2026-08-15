@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0c0e11" />
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; connect-src ws:" />
+  <title>Beat Saber Overlay Settings</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <main class="app-shell">
+    <aside class="settings-panel" aria-label="Overlay settings">
+      <header class="settings-header">
+        <div class="brand-mark" aria-hidden="true">TD</div>
+        <div>
+          <h1>Overlay settings</h1>
+        </div>
+      </header>
+
+      <div class="connection-card">
+        <span class="connection-dot" id="connection-dot"></span>
+        <div>
+          <strong id="connection-label">Connecting</strong>
+          <span id="connection-detail">127.0.0.1:2946</span>
+        </div>
+      </div>
+
+      <section class="setting-section" aria-labelledby="position-heading">
+        <div class="section-heading">
+          <h2 id="position-heading">Position</h2>
+          <p>Choose where the overlay sits on the canvas.</p>
+        </div>
+
+        <div class="position-grid" role="group" aria-label="Overlay position">
+          <button type="button" data-position="top-left" aria-pressed="true">
+            <span class="corner corner--top-left"></span>
+            <b>Top left</b>
+          </button>
+          <button type="button" data-position="top-right" aria-pressed="false">
+            <span class="corner corner--top-right"></span>
+            <b>Top right</b>
+          </button>
+          <button type="button" data-position="bottom-left" aria-pressed="false">
+            <span class="corner corner--bottom-left"></span>
+            <b>Bottom left</b>
+          </button>
+          <button type="button" data-position="bottom-right" aria-pressed="false">
+            <span class="corner corner--bottom-right"></span>
+            <b>Bottom right</b>
+          </button>
+        </div>
+      </section>
+
+      <section class="setting-section" aria-labelledby="song-heading">
+        <div class="section-heading">
+          <h2 id="song-heading">Song data</h2>
+          <p>Show or hide map information.</p>
+        </div>
+
+        <div class="toggle-list">
+          <label class="toggle-row">
+            <span><b>Cover art</b><small>Current map artwork</small></span>
+            <input type="checkbox" data-toggle="cover" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Song title</b><small>Name and subtitle</small></span>
+            <input type="checkbox" data-toggle="title" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Artist</b><small>Song author</small></span>
+            <input type="checkbox" data-toggle="artist" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Mapper</b><small>Map creator</small></span>
+            <input type="checkbox" data-toggle="mapper" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Difficulty</b><small>Difficulty and characteristic</small></span>
+            <input type="checkbox" data-toggle="difficulty" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>BPM</b><small>Beats per minute</small></span>
+            <input type="checkbox" data-toggle="bpm" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>NJS</b><small>Note jump speed</small></span>
+            <input type="checkbox" data-toggle="njs" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Song time</b><small>Elapsed time and progress</small></span>
+            <input type="checkbox" data-toggle="time" checked />
+            <i aria-hidden="true"></i>
+          </label>
+        </div>
+      </section>
+
+      <section class="setting-section" aria-labelledby="stats-heading">
+        <div class="section-heading">
+          <h2 id="stats-heading">Live stats</h2>
+          <p>Select the performance values viewers can see.</p>
+        </div>
+
+        <div class="toggle-list">
+          <label class="toggle-row">
+            <span><b>Score</b><small>Current raw score</small></span>
+            <input type="checkbox" data-toggle="score" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Combo</b><small>Current note streak</small></span>
+            <input type="checkbox" data-toggle="combo" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Rank</b><small>Current letter rank</small></span>
+            <input type="checkbox" data-toggle="rank" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Accuracy</b><small>Current accuracy percentage</small></span>
+            <input type="checkbox" data-toggle="accuracy" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Misses</b><small>Missed and incorrect notes</small></span>
+            <input type="checkbox" data-toggle="misses" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Health</b><small>Current energy level</small></span>
+            <input type="checkbox" data-toggle="health" checked />
+            <i aria-hidden="true"></i>
+          </label>
+        </div>
+      </section>
+
+    </aside>
+
+    <section class="preview-workspace" aria-labelledby="preview-heading">
+      <header class="preview-toolbar">
+        <div>
+          <span class="toolbar-eyebrow"></span>
+          <h2 id="preview-heading">Overlay preview</h2>
+        </div>
+        <div class="preview-actions">
+          <button class="toolbar-button toolbar-button--primary" type="button" id="copy-overlay-url">Copy overlay
+            URL</button>
+          <button class="toolbar-button" type="button" id="load-settings">Load settings</button>
+          <button class="toolbar-button toolbar-button--reset" type="button" id="reset-settings">Reset settings</button>
+        </div>
+      </header>
+
+      <div class="preview-stage" id="preview-stage">
+        <article class="overlay-preview" id="overlay-preview" data-position="top-left">
+          <div class="song-block">
+            <div class="cover-art" data-preview="cover">
+              <img id="cover-art" alt="" />
+              <span id="cover-fallback">No cover</span>
+              <div class="cover-time" data-preview="time" id="cover-time">0:00</div>
+              <svg class="cover-progress" data-preview="time" viewBox="0 0 100 100" aria-hidden="true">
+                <circle class="cover-progress__track" cx="50" cy="50" r="46"></circle>
+                <circle class="cover-progress__value" id="cover-progress" cx="50" cy="50" r="46"></circle>
+              </svg>
+            </div>
+
+            <div class="song-copy">
+              <div data-preview="title">
+                <div class="marquee-line">
+                  <h3 data-marquee id="song-title">Waiting for a song</h3>
+                </div>
+                <div class="marquee-line">
+                  <p class="song-subtitle" data-marquee id="song-subtitle"></p>
+                </div>
+              </div>
+              <div class="marquee-line">
+                <p class="song-credits" data-marquee>
+                  <span data-preview="artist" id="song-artist">No song data</span>
+                  <span data-preview="mapper" id="song-mapper"></span>
+                </p>
+              </div>
+              <div class="map-meta">
+                <span class="difficulty" data-preview="difficulty" id="difficulty">—</span>
+                <span data-preview="bpm"><b id="bpm">0</b> BPM</span>
+                <span data-preview="njs"><b id="njs">0</b> NJS</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-block">
+            <div class="score-stat" data-preview="score" id="score">0</div>
+            <div class="inline-stat" data-preview="combo">
+              <b id="combo">0</b><span>Combo</span>
+            </div>
+            <div class="rank-line">
+              <div class="inline-stat" data-preview="rank">
+                <b id="rank">—</b><span>Rank</span>
+              </div>
+              <div class="inline-stat" data-preview="accuracy">
+                <b><span id="accuracy">0.00</span>%</b><span>Accuracy</span>
+              </div>
+            </div>
+            <div class="secondary-stats">
+              <div class="inline-stat" data-preview="misses">
+                <b id="misses">0</b><span>Misses</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="health-meter" data-preview="health" id="health-meter">
+            <div class="health-meter__label">
+              <span>Health</span>
+              <b><span id="health">0</span>%</b>
+            </div>
+            <div class="health-meter__track" aria-hidden="true">
+              <div class="health-meter__fill" id="health-fill"></div>
+            </div>
+          </div>
+        </article>
+
+        <div class="stage-label"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog class="settings-dialog" id="load-settings-dialog" aria-labelledby="load-settings-heading">
+    <form class="settings-dialog__card" id="load-settings-form">
+      <span class="toolbar-eyebrow">Import</span>
+      <h2 id="load-settings-heading">Load overlay settings</h2>
+      <p>Paste an overlay URL to load its position and selected data.</p>
+      <label for="load-settings-url">Overlay URL</label>
+      <input type="url" id="load-settings-url" placeholder="https://example.com/overlay/?overlay=1&amp;position=..."
+        autocomplete="off" required />
+      <p class="settings-dialog__error" id="load-settings-error" role="alert"></p>
+      <div class="settings-dialog__actions">
+        <button class="toolbar-button" type="button" id="cancel-load-settings">Cancel</button>
+        <button class="toolbar-button toolbar-button--primary" type="submit">Load settings</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
