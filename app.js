@@ -281,11 +281,6 @@ function connectDataPuller() {
   closeSockets();
   setConnection("connecting", "Connecting to DataPuller");
 
-  if (window.location.protocol === "https:") {
-    setConnection("offline", "Local WebSocket blocked by HTTPS");
-    return;
-  }
-
   connectEndpoint("/BSDataPuller/MapData", (map) => {
     state.map = map;
     renderMap();
