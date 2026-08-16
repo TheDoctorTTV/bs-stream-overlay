@@ -69,17 +69,13 @@ select {
 }
 
 .brand-mark {
-  display: grid;
+  display: block;
+  flex: 0 0 auto;
   width: 40px;
   height: 40px;
-  place-items: center;
-  background: rgba(16, 13, 20, 0.78);
+  object-fit: cover;
   border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 12px;
-  color: white;
-  font-size: 0.78rem;
-  font-weight: 950;
-  letter-spacing: -0.04em;
 }
 
 .settings-header p,
@@ -101,6 +97,35 @@ select {
   letter-spacing: -0.025em;
 }
 
+.repository-link {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  width: fit-content;
+  margin: 18px 26px 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.repository-link:hover {
+  color: white;
+}
+
+.repository-link:focus-visible {
+  border-radius: 4px;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.repository-link svg {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
 .connection-card {
   display: flex;
   gap: 12px;
@@ -112,6 +137,10 @@ select {
   border-radius: 18px;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
   backdrop-filter: blur(12px);
+}
+
+.repository-link+.connection-card {
+  margin-top: 12px;
 }
 
 .connection-card>div {
@@ -1305,6 +1334,10 @@ select {
   }
 
   .connection-card {
+    margin-inline: 20px;
+  }
+
+  .repository-link {
     margin-inline: 20px;
   }
 
