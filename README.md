@@ -2,7 +2,7 @@
 
 **Launch the overlay:** [https://bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net)
 
-BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter) and appear with the song overlay or as a separately positioned element.
+BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter) and appear with the song overlay or as a separately positioned element.
 
 ## Preview
 
@@ -52,4 +52,4 @@ Selecting from locally installed system fonts requires a Chromium-based browser,
 7. Add a browser source in OBS, Streamlabs, Meld, or another supported streaming application.
 8. Paste the copied URL into the browser source.
 
-Your selected settings are stored in the generated URL, so the browser source will use the same layout and visible fields. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
+Your selected settings are stored in the generated URL, so the browser source will use the same layout, scale, accent color, corner shadow, and visible fields. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.

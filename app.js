@@ -12,6 +12,12 @@ const defaultSettings = {
   fontWeight: 0,
   fontScale: 100,
   textTransform: "",
+  accentColor: "#f000dc",
+  overlayScale: 100,
+  shadow: {
+    enabled: true,
+    strength: 100,
+  },
   heartRate: {
     enabled: false,
     mode: "paired",
@@ -26,6 +32,7 @@ const defaultSettings = {
     difficulty: true,
     bpm: true,
     njs: true,
+    bsr: true,
     time: true,
     score: true,
     combo: true,
@@ -61,6 +68,7 @@ const state = {
 const $ = (id) => document.getElementById(id);
 const ui = {
   preview: $("overlay-preview"),
+  overlayShadow: $("overlay-shadow"),
   copyOverlayUrl: $("copy-overlay-url"),
   loadSettingsButton: $("load-settings"),
   loadSettingsDialog: $("load-settings-dialog"),
@@ -79,6 +87,13 @@ const ui = {
   fontSize: $("font-size"),
   fontSizeValue: $("font-size-value"),
   textTransform: $("text-transform"),
+  accentColor: $("accent-color"),
+  overlayScale: $("overlay-scale"),
+  overlayScaleValue: $("overlay-scale-value"),
+  shadowEnabled: $("shadow-enabled"),
+  shadowOptions: $("shadow-options"),
+  shadowStrength: $("shadow-strength"),
+  shadowStrengthValue: $("shadow-strength-value"),
   heartRateEnabled: $("heart-rate-enabled"),
   heartRateOptions: $("heart-rate-options"),
   heartRateMode: $("heart-rate-mode"),
@@ -101,6 +116,7 @@ const ui = {
   difficulty: $("difficulty"),
   bpm: $("bpm"),
   njs: $("njs"),
+  bsrCodeWrap: $("bsr-code-wrap"),
   score: $("score"),
   combo: $("combo"),
   rank: $("rank"),
@@ -123,6 +139,12 @@ function loadSettings() {
     fontWeight: normalizeFontWeight(saved?.fontWeight),
     fontScale: normalizeFontScale(saved?.fontScale),
     textTransform: normalizeTextTransform(saved?.textTransform),
+    accentColor: normalizeAccentColor(saved?.accentColor),
+    overlayScale: normalizeOverlayScale(saved?.overlayScale),
+    shadow: {
+      enabled: saved?.shadow?.enabled !== false,
+      strength: normalizeShadowStrength(saved?.shadow?.strength),
+    },
     heartRate: {
       enabled: saved?.heartRate?.enabled === true,
       mode: normalizeHeartRateMode(saved?.heartRate?.mode),
@@ -152,6 +174,18 @@ function loadSettings() {
 
   const urlTextTransform = params.get("case");
   if (urlTextTransform !== null) settings.textTransform = normalizeTextTransform(urlTextTransform);
+
+  const urlAccentColor = params.get("accent");
+  if (urlAccentColor !== null) settings.accentColor = normalizeAccentColor(urlAccentColor);
+
+  const urlOverlayScale = params.get("overlayscale");
+  if (urlOverlayScale !== null) settings.overlayScale = normalizeOverlayScale(urlOverlayScale);
+
+  const urlShadowEnabled = params.get("shadow");
+  if (urlShadowEnabled !== null) settings.shadow.enabled = urlShadowEnabled !== "0";
+
+  const urlShadowStrength = params.get("shadowstrength");
+  if (urlShadowStrength !== null) settings.shadow.strength = normalizeShadowStrength(urlShadowStrength);
 
   const urlHeartRateMode = params.get("hr");
   if (urlHeartRateMode !== null) {
@@ -189,6 +223,46 @@ function normalizeTextTransform(value) {
   return textTransformValues.includes(value) ? value : defaultSettings.textTransform;
 }
 
+function normalizeAccentColor(value) {
+  return /^#[0-9a-f]{6}$/i.test(value || "") ? value.toLowerCase() : defaultSettings.accentColor;
+}
+
+function normalizeOverlayScale(value) {
+  const scale = Math.round(Number(value) / 5) * 5;
+  return Number.isFinite(scale) ? Math.max(50, Math.min(200, scale)) : defaultSettings.overlayScale;
+}
+
+function normalizeShadowStrength(value) {
+  const strength = Math.round(Number(value) / 5) * 5;
+  return Number.isFinite(strength)
+    ? Math.max(10, Math.min(100, strength))
+    : defaultSettings.shadow.strength;
+}
+
+function getRelativeLuminance(color) {
+  const channels = [1, 3, 5].map((offset) => {
+    const channel = Number.parseInt(color.slice(offset, offset + 2), 16) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+}
+
+function getContrastRatio(firstLuminance, secondLuminance) {
+  const lighter = Math.max(firstLuminance, secondLuminance);
+  const darker = Math.min(firstLuminance, secondLuminance);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+function getAccentTextColor(accentColor) {
+  const accentLuminance = getRelativeLuminance(accentColor);
+  const darkText = "#181719";
+  const lightText = "#ffffff";
+  return getContrastRatio(accentLuminance, getRelativeLuminance(darkText)) >
+    getContrastRatio(accentLuminance, getRelativeLuminance(lightText))
+    ? darkText
+    : lightText;
+}
+
 function normalizeHeartRateMode(value) {
   return heartRateModeValues.includes(value) ? value : defaultSettings.heartRate.mode;
 }
@@ -216,6 +290,17 @@ function applySettingsToUrl(url) {
   } else url.searchParams.delete("scale");
   if (state.settings.textTransform) url.searchParams.set("case", state.settings.textTransform);
   else url.searchParams.delete("case");
+  if (state.settings.accentColor !== defaultSettings.accentColor) {
+    url.searchParams.set("accent", state.settings.accentColor);
+  } else url.searchParams.delete("accent");
+  if (state.settings.overlayScale !== defaultSettings.overlayScale) {
+    url.searchParams.set("overlayscale", String(state.settings.overlayScale));
+  } else url.searchParams.delete("overlayscale");
+  if (state.settings.shadow.enabled) url.searchParams.delete("shadow");
+  else url.searchParams.set("shadow", "0");
+  if (state.settings.shadow.strength !== defaultSettings.shadow.strength) {
+    url.searchParams.set("shadowstrength", String(state.settings.shadow.strength));
+  } else url.searchParams.delete("shadowstrength");
   if (state.settings.heartRate.enabled) {
     url.searchParams.set("hr", state.settings.heartRate.mode);
     url.searchParams.set("hrport", String(state.settings.heartRate.port));
@@ -336,6 +421,8 @@ function renderSettings() {
   ui.preview.style.setProperty("--overlay-text-scale", String(state.settings.fontScale / 100));
   ui.preview.style.setProperty("--overlay-font-weight", String(state.settings.fontWeight || 400));
   ui.preview.style.setProperty("--overlay-text-transform", state.settings.textTransform || "none");
+  ui.preview.style.setProperty("--overlay-accent", state.settings.accentColor);
+  ui.preview.style.setProperty("--overlay-accent-text", getAccentTextColor(state.settings.accentColor));
   ui.preview.classList.toggle("has-custom-font-weight", Boolean(state.settings.fontWeight));
   ui.preview.classList.toggle("has-custom-text-transform", Boolean(state.settings.textTransform));
   ui.heartRateStandalone.style.setProperty(
@@ -352,6 +439,13 @@ function renderSettings() {
   ui.fontSize.value = String(state.settings.fontScale);
   ui.fontSizeValue.value = `${state.settings.fontScale}%`;
   ui.textTransform.value = state.settings.textTransform;
+  ui.accentColor.value = state.settings.accentColor;
+  ui.overlayScale.value = String(state.settings.overlayScale);
+  ui.overlayScaleValue.value = `${state.settings.overlayScale}%`;
+  ui.shadowEnabled.checked = state.settings.shadow.enabled;
+  ui.shadowOptions.hidden = !state.settings.shadow.enabled;
+  ui.shadowStrength.value = String(state.settings.shadow.strength);
+  ui.shadowStrengthValue.value = `${state.settings.shadow.strength}%`;
   ui.heartRateEnabled.checked = state.settings.heartRate.enabled;
   ui.heartRateOptions.hidden = !state.settings.heartRate.enabled;
   ui.heartRateMode.value = state.settings.heartRate.mode;
@@ -380,21 +474,32 @@ function renderSettings() {
   }
 
   renderHeartRate();
+  renderShadow();
   syncHeartRatePolling();
+  updateResolutionScale();
   updateMarquees();
 }
 
+function renderShadow() {
+  const overlayHidden = ui.preview.classList.contains("is-awaiting-data") ||
+    ui.preview.classList.contains("is-ended");
+  ui.overlayShadow.dataset.position = state.settings.position;
+  ui.overlayShadow.style.setProperty("--overlay-shadow-strength", String(state.settings.shadow.strength / 100));
+  ui.overlayShadow.classList.toggle("is-hidden", !state.settings.shadow.enabled || overlayHidden);
+}
+
 function updateResolutionScale() {
-  const scale = isOverlayMode
+  const canvasScale = isOverlayMode
     ? Math.min(window.innerWidth / referenceCanvas.width, window.innerHeight / referenceCanvas.height)
     : 1;
-  const safeScale = Math.max(0.01, scale);
+  const resolutionScale = canvasScale * (state.settings.overlayScale / 100);
+  const safeScale = Math.max(0.01, resolutionScale);
 
   ui.preview.style.setProperty("--overlay-resolution-scale", String(safeScale));
   ui.heartRateStandalone.style.setProperty("--overlay-resolution-scale", String(safeScale));
-  if (isOverlayMode) ui.preview.style.setProperty("--overlay-edge-inset", `${34 * safeScale}px`);
+  if (isOverlayMode) ui.preview.style.setProperty("--overlay-edge-inset", `${34 * canvasScale}px`);
   else ui.preview.style.removeProperty("--overlay-edge-inset");
-  if (isOverlayMode) ui.heartRateStandalone.style.setProperty("--overlay-edge-inset", `${34 * safeScale}px`);
+  if (isOverlayMode) ui.heartRateStandalone.style.setProperty("--overlay-edge-inset", `${34 * canvasScale}px`);
   else ui.heartRateStandalone.style.removeProperty("--overlay-edge-inset");
 }
 
@@ -508,6 +613,7 @@ function renderMap() {
   const hidden = levelEnded || (isOverlayMode && awaitingData);
   ui.preview.classList.toggle("is-awaiting-data", isOverlayMode && awaitingData);
   ui.preview.classList.toggle("is-ended", levelEnded);
+  renderShadow();
   ui.preview.setAttribute("aria-hidden", String(hidden));
 
   const cover = normalizeCover(map.CoverImage);
@@ -519,6 +625,9 @@ function renderMap() {
     (map.Difficulty === "ExpertPlus" ? "Expert +" : map.Difficulty) || "—";
   ui.bpm.textContent = formatNumber(map.BPM);
   ui.njs.textContent = formatNumber(map.NJS, 1);
+  const bsrKey = String(map.BSRKey || "").trim();
+  ui.bsrCodeWrap.textContent = bsrKey ? `!bsr ${bsrKey}` : "";
+  ui.bsrCodeWrap.hidden = !bsrKey;
   updateMarquees();
 
   if (cover) {
@@ -735,6 +844,30 @@ ui.textTransform.addEventListener("change", () => {
   renderSettings();
 });
 
+ui.accentColor.addEventListener("input", () => {
+  state.settings.accentColor = normalizeAccentColor(ui.accentColor.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.overlayScale.addEventListener("input", () => {
+  state.settings.overlayScale = normalizeOverlayScale(ui.overlayScale.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.shadowEnabled.addEventListener("change", () => {
+  state.settings.shadow.enabled = ui.shadowEnabled.checked;
+  saveSettings();
+  renderSettings();
+});
+
+ui.shadowStrength.addEventListener("input", () => {
+  state.settings.shadow.strength = normalizeShadowStrength(ui.shadowStrength.value);
+  saveSettings();
+  renderSettings();
+});
+
 ui.heartRateEnabled.addEventListener("change", () => {
   state.settings.heartRate.enabled = ui.heartRateEnabled.checked;
   saveSettings();
@@ -847,6 +980,10 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     const loadedWeight = loadedUrl.searchParams.get("weight");
     const loadedScale = loadedUrl.searchParams.get("scale");
     const loadedTextTransform = loadedUrl.searchParams.get("case");
+    const loadedAccentColor = loadedUrl.searchParams.get("accent");
+    const loadedOverlayScale = loadedUrl.searchParams.get("overlayscale");
+    const loadedShadowEnabled = loadedUrl.searchParams.get("shadow");
+    const loadedShadowStrength = loadedUrl.searchParams.get("shadowstrength");
     const loadedHeartRateMode = loadedUrl.searchParams.get("hr");
     const loadedHeartRatePosition = loadedUrl.searchParams.get("hrposition");
     const loadedHeartRatePort = loadedUrl.searchParams.get("hrport");
@@ -856,7 +993,9 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     }
 
     if (loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
-      loadedScale === null && loadedTextTransform === null && loadedHeartRateMode === null &&
+      loadedScale === null && loadedTextTransform === null && loadedAccentColor === null &&
+      loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
+      loadedHeartRateMode === null &&
       loadedHeartRatePosition === null && loadedHeartRatePort === null) {
       throw new Error("That URL does not contain overlay settings.");
     }
@@ -875,6 +1014,12 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     if (loadedWeight !== null) nextSettings.fontWeight = normalizeFontWeight(loadedWeight);
     if (loadedScale !== null) nextSettings.fontScale = normalizeFontScale(loadedScale);
     if (loadedTextTransform !== null) nextSettings.textTransform = normalizeTextTransform(loadedTextTransform);
+    if (loadedAccentColor !== null) nextSettings.accentColor = normalizeAccentColor(loadedAccentColor);
+    if (loadedOverlayScale !== null) nextSettings.overlayScale = normalizeOverlayScale(loadedOverlayScale);
+    if (loadedShadowEnabled !== null) nextSettings.shadow.enabled = loadedShadowEnabled !== "0";
+    if (loadedShadowStrength !== null) {
+      nextSettings.shadow.strength = normalizeShadowStrength(loadedShadowStrength);
+    }
     if (loadedHeartRateMode !== null) {
       nextSettings.heartRate.enabled = true;
       nextSettings.heartRate.mode = loadedHeartRateMode;

@@ -422,6 +422,36 @@ select {
   box-shadow: 0 0 0 2px rgba(240, 0, 220, 0.13);
 }
 
+.color-control input[type="color"] {
+  width: 42px;
+  height: 32px;
+  padding: 3px;
+  background: #1d1a1e;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9px;
+  cursor: pointer;
+}
+
+.color-control input[type="color"]:focus-visible {
+  border-color: var(--accent-hot);
+  box-shadow: 0 0 0 2px rgba(240, 0, 220, 0.13);
+  outline: 0;
+}
+
+.color-control input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.color-control input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 6px;
+}
+
+.color-control input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 6px;
+}
+
 .type-control--range {
   grid-template-columns: 1fr;
   gap: 8px;
@@ -804,6 +834,41 @@ select {
   box-shadow: inset 0 0 90px rgba(0, 0, 0, 0.26), 0 16px 40px rgba(0, 0, 0, 0.25);
 }
 
+.overlay-shadow {
+  --shadow-x: 0%;
+  --shadow-y: 0%;
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 120% 65% at var(--shadow-x) var(--shadow-y),
+    rgb(0 0 0 / 0.96) 0%,
+    rgb(0 0 0 / 0.72) 34%,
+    rgb(0 0 0 / 0.36) 60%,
+    rgb(0 0 0 / 0.14) 80%,
+    transparent 100%
+  );
+  opacity: var(--overlay-shadow-strength, 1);
+  transition: opacity 700ms ease;
+}
+
+.overlay-shadow[data-position="top-right"] {
+  --shadow-x: 100%;
+}
+
+.overlay-shadow[data-position="bottom-left"] {
+  --shadow-y: 100%;
+}
+
+.overlay-shadow[data-position="bottom-right"] {
+  --shadow-x: 100%;
+  --shadow-y: 100%;
+}
+
+.overlay-shadow.is-hidden {
+  opacity: 0;
+}
+
 .stage-label {
   position: absolute;
   right: 14px;
@@ -934,6 +999,10 @@ select {
   pointer-events: none;
 }
 
+.cover-art.has-image::after {
+  background: rgba(0, 0, 0, 0.38);
+}
+
 .cover-time {
   position: absolute;
   z-index: 2;
@@ -1059,10 +1128,15 @@ select {
 
 .difficulty {
   padding: 7px 12px;
-  background: var(--button-gradient);
-  color: white;
+  background: var(--overlay-accent, var(--accent));
+  color: var(--overlay-accent-text, white);
   border-radius: 999px;
   box-shadow: 0 5px 14px rgba(20, 20, 20, 0.2);
+}
+
+.bsr-code,
+.overlay-preview.has-custom-text-transform .bsr-code {
+  text-transform: none !important;
 }
 
 .map-meta b {

@@ -66,6 +66,37 @@
         </div>
       </section>
 
+      <section class="setting-section" aria-labelledby="style-heading">
+        <div class="section-heading">
+          <h2 id="style-heading">Overlay style</h2>
+          <p>Customize the accent used by the overlay.</p>
+        </div>
+
+        <label class="type-control color-control" for="accent-color">
+          <span><b>Accent color</b><small>Difficulty and BSR pills</small></span>
+          <input type="color" id="accent-color" value="#f000dc" />
+        </label>
+
+        <label class="type-control type-control--range" for="overlay-scale">
+          <span><b>Overlay scale</b><output id="overlay-scale-value" for="overlay-scale">100%</output></span>
+          <input type="range" id="overlay-scale" min="50" max="200" step="5" value="100" />
+          <small>100% matches 1080p DPI scaling</small>
+        </label>
+
+        <label class="toggle-row">
+          <span><b>Corner shadow</b><small>Dark fade behind the overlay</small></span>
+          <input type="checkbox" id="shadow-enabled" checked />
+          <i aria-hidden="true"></i>
+        </label>
+
+        <div id="shadow-options">
+          <label class="type-control type-control--range" for="shadow-strength">
+            <span><b>Shadow strength</b><output id="shadow-strength-value" for="shadow-strength">100%</output></span>
+            <input type="range" id="shadow-strength" min="10" max="100" step="5" value="100" />
+          </label>
+        </div>
+      </section>
+
       <section class="setting-section font-setting-section" aria-labelledby="font-heading">
         <div class="section-heading">
           <h2 id="font-heading">Text font</h2>
@@ -156,6 +187,11 @@
           <label class="toggle-row">
             <span><b>NJS</b><small>Note jump speed</small></span>
             <input type="checkbox" data-toggle="njs" checked />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>BSR code</b><small>BeatSaver map key</small></span>
+            <input type="checkbox" data-toggle="bsr" checked />
             <i aria-hidden="true"></i>
           </label>
           <label class="toggle-row">
@@ -279,6 +315,7 @@
       </header>
 
       <div class="preview-stage" id="preview-stage">
+        <div class="overlay-shadow" id="overlay-shadow" data-position="top-left" aria-hidden="true"></div>
         <article class="overlay-preview is-awaiting-data" id="overlay-preview" data-position="top-left">
           <div class="song-block">
             <div class="cover-art" data-preview="cover">
@@ -310,6 +347,7 @@
                 <span class="difficulty" data-preview="difficulty" id="difficulty">—</span>
                 <span data-preview="bpm"><b id="bpm">0</b> BPM</span>
                 <span data-preview="njs"><b id="njs">0</b> NJS</span>
+                <span class="difficulty bsr-code" data-preview="bsr" id="bsr-code-wrap" hidden></span>
               </div>
             </div>
           </div>
