@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icons/bs-overlay-icon.svg" alt="BS Stream Overlay icon" width="180">
+</p>
+
 # BS Stream Overlay
 
 **Launch the overlay:** [https://bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net)
