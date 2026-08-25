@@ -1,12 +1,14 @@
 const params = new URLSearchParams(window.location.search);
 const host = params.get("host") || "127.0.0.1";
-const port = params.get("port") || "2946";
+const customPort = params.get("port");
 const heartRateHost = params.get("hrhost") || (params.has("host") ? host : "localhost");
 const storageKey = "bs-stream-overlay-settings-v1";
 const isOverlayMode = params.get("overlay") === "1";
 const referenceCanvas = { width: 1920, height: 1080 };
+const dataSourceValues = ["datapuller", "bsplus"];
 
 const defaultSettings = {
+  dataSource: "datapuller",
   position: "top-left",
   fontFamily: "",
   fontWeight: 0,
@@ -47,6 +49,9 @@ const visibleKeys = Object.keys(defaultSettings.visible);
 const fontWeightValues = [0, 400, 500, 600, 700, 800, 900];
 const textTransformValues = ["", "uppercase", "lowercase", "capitalize"];
 const heartRateModeValues = ["paired", "standalone"];
+const unavailableFieldsByDataSource = {
+  bsplus: new Set(["njs", "bsr"]),
+};
 
 const state = {
   map: null,
@@ -63,6 +68,10 @@ const state = {
   fontsLoaded: false,
   fontsLoading: null,
   activeFontIndex: -1,
+  beatSaberPlusClock: null,
+  telemetryClockTimer: null,
+  connectionGeneration: 0,
+  availableDataSources: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -79,6 +88,9 @@ const ui = {
   connectionDot: $("connection-dot"),
   connectionLabel: $("connection-label"),
   connectionDetail: $("connection-detail"),
+  dataSourceControl: $("data-source-control"),
+  dataSource: $("data-source"),
+  connectionAdvice: $("connection-advice"),
   fontPicker: $("font-picker"),
   fontSearch: $("font-search"),
   fontOptions: $("font-options"),
@@ -96,7 +108,7 @@ const ui = {
   shadowStrengthValue: $("shadow-strength-value"),
   heartRateEnabled: $("heart-rate-enabled"),
   heartRateOptions: $("heart-rate-options"),
-  heartRateMode: $("heart-rate-mode"),
+  heartRateModeButtons: document.querySelectorAll("[data-heart-rate-mode]"),
   heartRatePositionSettings: $("heart-rate-position-settings"),
   heartRatePort: $("heart-rate-port"),
   heartRateDot: $("heart-rate-dot"),
@@ -131,9 +143,10 @@ function loadSettings() {
 
   try {
     saved = JSON.parse(localStorage.getItem(storageKey));
-  } catch {}
+  } catch { }
 
   const settings = {
+    dataSource: normalizeDataSource(saved?.dataSource),
     position: saved?.position || defaultSettings.position,
     fontFamily: normalizeFontFamily(saved?.fontFamily),
     fontWeight: normalizeFontWeight(saved?.fontWeight),
@@ -156,6 +169,10 @@ function loadSettings() {
 
   const urlPosition = params.get("position");
   if (positionKeys.includes(urlPosition)) settings.position = urlPosition;
+
+  const urlDataSource = params.get("source");
+  if (urlDataSource !== null) settings.dataSource = normalizeDataSource(urlDataSource);
+  else if (isOverlayMode) settings.dataSource = defaultSettings.dataSource;
 
   const urlVisible = params.get("show");
   if (urlVisible !== null) {
@@ -207,6 +224,10 @@ function loadSettings() {
 function normalizeFontFamily(value) {
   if (typeof value !== "string") return "";
   return value.replace(/[\u0000-\u001f\u007f]/g, "").trim().slice(0, 160);
+}
+
+function normalizeDataSource(value) {
+  return dataSourceValues.includes(value) ? value : defaultSettings.dataSource;
 }
 
 function normalizeFontWeight(value) {
@@ -279,6 +300,9 @@ function normalizePort(value) {
 }
 
 function applySettingsToUrl(url) {
+  if (state.settings.dataSource !== defaultSettings.dataSource) {
+    url.searchParams.set("source", state.settings.dataSource);
+  } else url.searchParams.delete("source");
   url.searchParams.set("position", state.settings.position);
   url.searchParams.set("show", visibleKeys.filter((key) => state.settings.visible[key] !== false).join(","));
   if (state.settings.fontFamily) url.searchParams.set("font", state.settings.fontFamily);
@@ -316,13 +340,6 @@ function applySettingsToUrl(url) {
   return url;
 }
 
-function syncEditorUrl() {
-  if (isOverlayMode) return;
-  const url = applySettingsToUrl(new URL(window.location.href));
-  url.searchParams.delete("overlay");
-  window.history.replaceState(null, "", url);
-}
-
 function buildOverlayUrl() {
   const url = applySettingsToUrl(new URL(window.location.href));
   url.searchParams.set("overlay", "1");
@@ -332,9 +349,7 @@ function buildOverlayUrl() {
 function saveSettings() {
   try {
     localStorage.setItem(storageKey, JSON.stringify(state.settings));
-  } catch {}
-
-  syncEditorUrl();
+  } catch { }
 }
 
 function formatNumber(value, digits = 0) {
@@ -355,6 +370,90 @@ function normalizeCover(value) {
 function normalizeHealth(value) {
   const health = Number(value) || 0;
   return health <= 1 ? health * 100 : health;
+}
+
+function getDataSourceName(source = state.settings.dataSource) {
+  return source === "bsplus" ? "BS+ SO" : "DataPuller";
+}
+
+function setDataSourceChoiceVisible(visible) {
+  ui.dataSourceControl.hidden = !visible;
+  ui.connectionAdvice.hidden = !visible;
+}
+
+function getTelemetryPort(source = state.settings.dataSource) {
+  return customPort || (source === "bsplus" ? "2947" : "2946");
+}
+
+function normalizeBeatSaberPlusDuration(value) {
+  const duration = Math.max(0, Number(value) || 0);
+  return duration / 1000;
+}
+
+function getRankFromAccuracy(value) {
+  const accuracy = Math.max(0, Math.min(100, Number(value) || 0));
+  if (accuracy >= 100) return "SSS";
+  if (accuracy >= 90) return "SS";
+  if (accuracy >= 80) return "S";
+  if (accuracy >= 65) return "A";
+  if (accuracy >= 50) return "B";
+  if (accuracy >= 35) return "C";
+  if (accuracy >= 20) return "D";
+  return "E";
+}
+
+function adaptBeatSaberPlusMap(map) {
+  return {
+    InLevel: true,
+    LevelPaused: false,
+    LevelFinished: false,
+    LevelFailed: false,
+    LevelQuit: false,
+    LevelID: map.level_id || "",
+    SongName: map.name || "",
+    SongSubName: map.sub_name || "",
+    SongAuthor: map.artist || "",
+    Mapper: map.mapper || "",
+    Mappers: map.mapper ? [map.mapper] : [],
+    BSRKey: map.BSRKey || "",
+    CoverImage: map.coverRaw || "",
+    Duration: normalizeBeatSaberPlusDuration(map.duration),
+    MapType: map.characteristic || "",
+    Difficulty: map.difficulty || "",
+    BPM: Number(map.BPM) || 0,
+    NJS: null,
+    PP: Number(map.PP) || 0,
+  };
+}
+
+function adaptBeatSaberPlusScore(score) {
+  const accuracy = Math.max(0, Math.min(100, (Number(score.accuracy) || 0) * 100));
+  return {
+    Score: Number(score.score) || 0,
+    Rank: getRankFromAccuracy(accuracy),
+    Combo: Number(score.combo) || 0,
+    Misses: Number(score.missCount) || 0,
+    Accuracy: accuracy,
+    PlayerHealth: Math.max(0, Math.min(100, (Number(score.currentHealth) || 0) * 100)),
+    TimeElapsed: Number(score.time) || 0,
+  };
+}
+
+function setBeatSaberPlusClock(time, paused = false, multiplier = null) {
+  state.beatSaberPlusClock = {
+    time: Math.max(0, Number(time) || 0),
+    updatedAt: performance.now(),
+    paused,
+    multiplier: Number(multiplier) > 0
+      ? Number(multiplier)
+      : state.beatSaberPlusClock?.multiplier || 1,
+  };
+}
+
+function getBeatSaberPlusTime() {
+  const clock = state.beatSaberPlusClock;
+  if (!clock || clock.paused) return clock?.time || 0;
+  return clock.time + ((performance.now() - clock.updatedAt) / 1000) * clock.multiplier;
 }
 
 function hasLoadedMap(map) {
@@ -412,6 +511,7 @@ function updateMarquees() {
 }
 
 function renderSettings() {
+  const unavailableFields = unavailableFieldsByDataSource[state.settings.dataSource] || new Set();
   ui.preview.dataset.position = state.settings.position;
   ui.preview.classList.toggle("without-cover", state.settings.visible.cover === false);
   ui.preview.style.setProperty(
@@ -435,6 +535,7 @@ function renderSettings() {
   ui.heartRateStandalone.classList.toggle("has-custom-font-weight", Boolean(state.settings.fontWeight));
   ui.heartRateStandalone.classList.toggle("has-custom-text-transform", Boolean(state.settings.textTransform));
 
+  ui.dataSource.value = state.settings.dataSource;
   ui.fontWeight.value = String(state.settings.fontWeight);
   ui.fontSize.value = String(state.settings.fontScale);
   ui.fontSizeValue.value = `${state.settings.fontScale}%`;
@@ -448,7 +549,6 @@ function renderSettings() {
   ui.shadowStrengthValue.value = `${state.settings.shadow.strength}%`;
   ui.heartRateEnabled.checked = state.settings.heartRate.enabled;
   ui.heartRateOptions.hidden = !state.settings.heartRate.enabled;
-  ui.heartRateMode.value = state.settings.heartRate.mode;
   ui.heartRatePort.value = String(state.settings.heartRate.port);
   ui.heartRatePositionSettings.hidden = state.settings.heartRate.mode !== "standalone";
   ui.heartRateStandalone.dataset.position = state.settings.heartRate.position;
@@ -461,8 +561,13 @@ function renderSettings() {
     button.setAttribute("aria-pressed", String(button.dataset.heartRatePosition === state.settings.heartRate.position));
   });
 
+  ui.heartRateModeButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.heartRateMode === state.settings.heartRate.mode));
+  });
+
   document.querySelectorAll("[data-toggle]").forEach((input) => {
     input.checked = state.settings.visible[input.dataset.toggle] !== false;
+    input.closest(".toggle-row").hidden = unavailableFields.has(input.dataset.toggle);
   });
 
   document.querySelectorAll("[data-preview]").forEach((element) => {
@@ -624,7 +729,9 @@ function renderMap() {
   ui.difficulty.textContent = map.CustomDifficultyLabel ||
     (map.Difficulty === "ExpertPlus" ? "Expert +" : map.Difficulty) || "—";
   ui.bpm.textContent = formatNumber(map.BPM);
-  ui.njs.textContent = formatNumber(map.NJS, 1);
+  const hasNjs = map.NJS != null;
+  ui.njs.parentElement.hidden = !hasNjs;
+  ui.njs.textContent = hasNjs ? formatNumber(map.NJS, 1) : "";
   const bsrKey = String(map.BSRKey || "").trim();
   ui.bsrCodeWrap.textContent = bsrKey ? `!bsr ${bsrKey}` : "";
   ui.bsrCodeWrap.hidden = !bsrKey;
@@ -745,13 +852,18 @@ function syncHeartRatePolling() {
   poll();
 }
 
-function setConnection(status, label) {
+function setConnection(status, label, detail = `${getDataSourceName()} · ${host}:${getTelemetryPort()}`) {
   ui.connectionDot.dataset.state = status;
   ui.connectionLabel.textContent = label;
-  ui.connectionDetail.textContent = `${host}:${port}`;
+  ui.connectionDetail.textContent = detail;
 }
 
 function closeSockets() {
+  clearTimeout(state.reconnectTimer);
+  state.reconnectTimer = null;
+  clearInterval(state.telemetryClockTimer);
+  state.telemetryClockTimer = null;
+  state.beatSaberPlusClock = null;
   state.sockets.forEach((socket) => {
     state.intentionalClosures.add(socket);
     socket.close();
@@ -760,8 +872,50 @@ function closeSockets() {
   state.openSockets = 0;
 }
 
-function connectEndpoint(path, handler) {
-  const socket = new WebSocket(`ws://${host}:${port}${path}`);
+function resetTelemetry() {
+  state.map = null;
+  state.live = null;
+  ui.preview.classList.toggle("is-awaiting-data", isOverlayMode);
+  ui.preview.classList.remove("is-ended");
+  ui.preview.setAttribute("aria-hidden", String(isOverlayMode));
+  renderShadow();
+}
+
+function scheduleReconnect() {
+  clearTimeout(state.reconnectTimer);
+  state.reconnectTimer = setTimeout(connectTelemetry, 2500);
+}
+
+function getDataSourceSocketUrl(source) {
+  return source === "bsplus"
+    ? `ws://${host}:${getTelemetryPort(source)}/socket`
+    : `ws://${host}:${getTelemetryPort(source)}/BSDataPuller/MapData`;
+}
+
+function probeDataSource(source) {
+  return new Promise((resolve) => {
+    const socket = new WebSocket(getDataSourceSocketUrl(source));
+    state.sockets.push(socket);
+    let settled = false;
+
+    const finish = (available) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      state.intentionalClosures.add(socket);
+      socket.close();
+      resolve(available);
+    };
+
+    const timeout = setTimeout(() => finish(false), 900);
+    socket.addEventListener("open", () => finish(true));
+    socket.addEventListener("error", () => finish(false));
+    socket.addEventListener("close", () => finish(false));
+  });
+}
+
+function connectDataPullerEndpoint(path, handler) {
+  const socket = new WebSocket(`ws://${host}:${getTelemetryPort("datapuller")}${path}`);
   state.sockets.push(socket);
 
   socket.addEventListener("open", () => {
@@ -781,25 +935,149 @@ function connectEndpoint(path, handler) {
     if (state.intentionalClosures.has(socket)) return;
     state.openSockets = Math.max(0, state.openSockets - 1);
     setConnection("offline", "DataPuller disconnected");
-    clearTimeout(state.reconnectTimer);
-    state.reconnectTimer = setTimeout(connectDataPuller, 2500);
+    scheduleReconnect();
   });
 
   socket.addEventListener("error", () => socket.close());
 }
 
 function connectDataPuller() {
-  closeSockets();
   setConnection("connecting", "Connecting to DataPuller");
 
-  connectEndpoint("/BSDataPuller/MapData", (map) => {
+  connectDataPullerEndpoint("/BSDataPuller/MapData", (map) => {
     state.map = map;
     renderMap();
   });
-  connectEndpoint("/BSDataPuller/LiveData", (live) => {
+  connectDataPullerEndpoint("/BSDataPuller/LiveData", (live) => {
     state.live = live;
     renderLive();
   });
+}
+
+function handleBeatSaberPlusMessage(message) {
+  if (message?._type !== "event") return;
+
+  if (message._event === "mapInfo" && message.mapInfoChanged) {
+    state.map = adaptBeatSaberPlusMap(message.mapInfoChanged);
+    setBeatSaberPlusClock(
+      message.mapInfoChanged.time,
+      false,
+      message.mapInfoChanged.timeMultiplier,
+    );
+    state.live = adaptBeatSaberPlusScore({
+      accuracy: 1,
+      currentHealth: 0.5,
+      time: message.mapInfoChanged.time,
+    });
+    renderMap();
+    return;
+  }
+
+  if (message._event === "score" && message.scoreEvent) {
+    state.live = adaptBeatSaberPlusScore(message.scoreEvent);
+    setBeatSaberPlusClock(message.scoreEvent.time, state.beatSaberPlusClock?.paused);
+    renderLive();
+    return;
+  }
+
+  if (message._event === "gameState") {
+    const inLevel = message.gameStateChanged === "Playing";
+    if (state.map) {
+      state.map = {
+        ...state.map,
+        InLevel: inLevel,
+        LevelQuit: !inLevel,
+      };
+      renderMap();
+    }
+    if (!inLevel && state.beatSaberPlusClock) {
+      setBeatSaberPlusClock(getBeatSaberPlusTime(), true);
+    }
+    return;
+  }
+
+  if (message._event === "pause" && state.map) {
+    state.map.LevelPaused = true;
+    setBeatSaberPlusClock(message.pauseTime, true);
+  } else if (message._event === "resume" && state.map) {
+    state.map.LevelPaused = false;
+    setBeatSaberPlusClock(message.resumeTime, false);
+  }
+}
+
+function connectBeatSaberPlus() {
+  setConnection("connecting", "Connecting to BS+ SO");
+  const socket = new WebSocket(`ws://${host}:${getTelemetryPort("bsplus")}/socket`);
+  state.sockets.push(socket);
+  state.telemetryClockTimer = setInterval(() => {
+    if (!state.live || !state.beatSaberPlusClock || state.beatSaberPlusClock.paused) return;
+    state.live.TimeElapsed = getBeatSaberPlusTime();
+    renderLive();
+  }, 250);
+
+  socket.addEventListener("open", () => {
+    state.openSockets = 1;
+    setConnection("live", "BS+ SO connected");
+  });
+
+  socket.addEventListener("message", ({ data }) => {
+    if (!String(data).trim()) return;
+    try {
+      handleBeatSaberPlusMessage(JSON.parse(data));
+    } catch (error) {
+      console.warn("Ignored invalid BS+ SO message", error);
+    }
+  });
+
+  socket.addEventListener("close", () => {
+    if (state.intentionalClosures.has(socket)) return;
+    state.openSockets = 0;
+    setConnection("offline", "BS+ SO disconnected");
+    scheduleReconnect();
+  });
+
+  socket.addEventListener("error", () => socket.close());
+}
+
+function connectSelectedTelemetry() {
+  closeSockets();
+  resetTelemetry();
+  if (state.settings.dataSource === "bsplus") connectBeatSaberPlus();
+  else connectDataPuller();
+}
+
+async function connectTelemetry() {
+  const generation = ++state.connectionGeneration;
+  closeSockets();
+  resetTelemetry();
+  state.availableDataSources = [];
+  setDataSourceChoiceVisible(false);
+  setConnection("connecting", "Finding data providers", "Checking DataPuller or BS+ SO");
+
+  const availability = await Promise.all(
+    dataSourceValues.map(async (source) => ({ source, available: await probeDataSource(source) })),
+  );
+  if (generation !== state.connectionGeneration) return;
+
+  state.availableDataSources = availability
+    .filter(({ available }) => available)
+    .map(({ source }) => source);
+  setDataSourceChoiceVisible(state.availableDataSources.length > 1);
+
+  if (!state.availableDataSources.length) {
+    closeSockets();
+    setConnection("offline", "No data provider found", "Start Beat Saber with DataPuller or BS+ SO");
+    scheduleReconnect();
+    return;
+  }
+
+  if (state.availableDataSources.length === 1) {
+    state.settings.dataSource = state.availableDataSources[0];
+    saveSettings();
+    renderSettings();
+  }
+
+  connectSelectedTelemetry();
 }
 
 document.querySelectorAll(".position-grid button[data-position]").forEach((button) => {
@@ -824,6 +1102,13 @@ document.querySelectorAll("[data-toggle]").forEach((input) => {
     saveSettings();
     renderSettings();
   });
+});
+
+ui.dataSource.addEventListener("change", () => {
+  state.settings.dataSource = normalizeDataSource(ui.dataSource.value);
+  saveSettings();
+  renderSettings();
+  connectSelectedTelemetry();
 });
 
 ui.fontWeight.addEventListener("change", () => {
@@ -874,10 +1159,12 @@ ui.heartRateEnabled.addEventListener("change", () => {
   renderSettings();
 });
 
-ui.heartRateMode.addEventListener("change", () => {
-  state.settings.heartRate.mode = normalizeHeartRateMode(ui.heartRateMode.value);
-  saveSettings();
-  renderSettings();
+ui.heartRateModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    state.settings.heartRate.mode = normalizeHeartRateMode(button.dataset.heartRateMode);
+    saveSettings();
+    renderSettings();
+  });
 });
 
 ui.heartRatePort.addEventListener("change", () => {
@@ -932,6 +1219,7 @@ $("reset-settings").addEventListener("click", () => {
   state.settings = structuredClone(defaultSettings);
   saveSettings();
   renderSettings();
+  connectTelemetry();
 });
 
 ui.copyOverlayUrl.addEventListener("click", async () => {
@@ -974,6 +1262,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
 
   try {
     const loadedUrl = new URL(ui.loadSettingsUrl.value.trim(), window.location.href);
+    const loadedDataSource = loadedUrl.searchParams.get("source");
     const loadedPosition = loadedUrl.searchParams.get("position");
     const loadedVisible = loadedUrl.searchParams.get("show");
     const loadedFont = loadedUrl.searchParams.get("font");
@@ -992,7 +1281,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
       throw new Error("That URL contains an unsupported overlay position.");
     }
 
-    if (loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
+    if (loadedDataSource === null && loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
       loadedScale === null && loadedTextTransform === null && loadedAccentColor === null &&
       loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
       loadedHeartRateMode === null &&
@@ -1008,7 +1297,12 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
       throw new Error("That URL contains an unsupported heart rate position.");
     }
 
+    if (loadedDataSource !== null && !dataSourceValues.includes(loadedDataSource)) {
+      throw new Error("That URL contains an unsupported song data source.");
+    }
+
     const nextSettings = structuredClone(state.settings);
+    nextSettings.dataSource = loadedDataSource || defaultSettings.dataSource;
     if (loadedPosition !== null) nextSettings.position = loadedPosition;
     if (loadedFont !== null) nextSettings.fontFamily = normalizeFontFamily(loadedFont);
     if (loadedWeight !== null) nextSettings.fontWeight = normalizeFontWeight(loadedWeight);
@@ -1035,6 +1329,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     state.settings = nextSettings;
     saveSettings();
     renderSettings();
+    connectTelemetry();
     ui.loadSettingsDialog.close();
   } catch (error) {
     ui.loadSettingsError.textContent = error.message || "Enter a valid overlay URL.";
@@ -1057,4 +1352,4 @@ ui.preview.classList.toggle("is-awaiting-data", isOverlayMode);
 updateResolutionScale();
 renderSettings();
 if (!isOverlayMode) saveSettings();
-connectDataPuller();
+connectTelemetry();

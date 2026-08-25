@@ -2,7 +2,7 @@
 
 **Launch the overlay:** [https://bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net)
 
-BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter) and appear with the song overlay or as a separately positioned element.
+BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter) and appear with the song overlay or as a separately positioned element.
 
 ## Preview
 
@@ -33,7 +33,7 @@ To use this feature, install HRCounter, enable its HTTP server, and enter its po
 
 ## Requirements
 
-- DataPuller installed in Beat Saber
+- DataPuller or BS+ SO installed and enabled in Beat Saber
 - HRCounter installed and its HTTP server enabled (optional, for heart rate)
 - Streaming software that supports browser sources, such as OBS Studio, Streamlabs Desktop, Meld Studio, or similar software
 
@@ -43,13 +43,15 @@ Selecting from locally installed system fonts requires a Chromium-based browser,
 
 ## Create your overlay
 
-1. Install [DataPuller](https://github.com/WentTheFox/BSDataPuller) in Beat Saber.
-2. Start Beat Saber and make sure DataPuller is running.
+1. Install [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus) in Beat Saber. If using BS+, enable its Song Overlay module.
+2. Start Beat Saber and make sure your selected data provider is running.
 3. Open [bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net).
-4. Use the settings panel to choose the overlay position and the information you want to display.
+4. The overlay automatically uses the available provider. If both are detected, choose **DataPuller** or **BS+ SO** in the connection card, then configure the overlay position and information you want to display. Enabling only one provider is recommended for best performance.
 5. Optional: enable **Show heart rate**, then choose **With song overlay** or **On its own** and configure HRCounter's port.
 6. Select **Copy overlay URL** at the top of the page.
 7. Add a browser source in OBS, Streamlabs, Meld, or another supported streaming application.
 8. Paste the copied URL into the browser source.
 
 Your selected settings are stored in the generated URL, so the browser source will use the same layout, scale, accent color, corner shadow, and visible fields. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
+
+DataPuller exposes some fields that BS+ SO does not, including NJS and (depending on the map) a BSR key. Unavailable values are shown as a dash or hidden when using BS+.

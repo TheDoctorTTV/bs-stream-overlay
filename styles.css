@@ -127,7 +127,8 @@ select {
 }
 
 .connection-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
   margin: 20px 20px 0;
@@ -143,9 +144,10 @@ select {
   margin-top: 12px;
 }
 
-.connection-card>div {
+.connection-copy {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .connection-card strong {
@@ -155,6 +157,46 @@ select {
 .connection-card span:not(.connection-dot) {
   color: var(--muted);
   font-size: 0.68rem;
+}
+
+.connection-provider {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+}
+
+.connection-provider[hidden] {
+  display: none;
+}
+
+.connection-provider select {
+  max-width: 106px;
+  padding: 7px 28px 7px 9px;
+  background: #1d1a1e;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9px;
+  color: var(--text);
+  font-size: 0.65rem;
+  outline: 0;
+}
+
+.connection-provider select:focus-visible {
+  border-color: var(--accent-hot);
+  box-shadow: 0 0 0 2px rgba(240, 0, 220, 0.13);
+}
+
+.connection-advice {
+  grid-column: 2 / -1;
+  margin: 0;
+  padding-top: 9px;
+  border-top: 1px solid var(--line-soft);
+  color: red;
+  font-size: 0.61rem;
+  line-height: 1.4;
+}
+
+.connection-advice[hidden] {
+  display: none;
 }
 
 .connection-dot {
@@ -208,14 +250,14 @@ select {
 
 .position-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
 .position-grid button {
   display: grid;
-  grid-template-columns: 32px 1fr;
-  gap: 9px;
+  min-height: 54px;
+  place-items: center;
   align-items: center;
   padding: 10px;
   background: rgba(13, 12, 14, 0.34);
@@ -223,7 +265,6 @@ select {
   border-radius: 12px;
   color: var(--muted);
   cursor: pointer;
-  text-align: left;
 }
 
 .position-grid button:hover {
@@ -242,10 +283,6 @@ select {
 .toolbar-button:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-}
-
-.position-grid b {
-  font-size: 0.68rem;
 }
 
 .font-picker {
@@ -551,6 +588,10 @@ select {
   cursor: pointer;
 }
 
+.toggle-row[hidden] {
+  display: none;
+}
+
 .toggle-row:first-child {
   border-top: 0;
 }
@@ -623,6 +664,49 @@ select {
 .heart-rate-paired[hidden],
 .heart-rate-standalone[hidden] {
   display: none !important;
+}
+
+.heart-rate-mode-picker {
+  display: grid;
+  grid-template-columns: repeat(2, 42px);
+  gap: 6px;
+}
+
+.heart-rate-mode-picker button {
+  display: grid;
+  width: 42px;
+  height: 36px;
+  padding: 0;
+  place-items: center;
+  background: #1d1a1e;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+.heart-rate-mode-picker button:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+  color: var(--text);
+}
+
+.heart-rate-mode-picker button[aria-pressed="true"] {
+  background: linear-gradient(115deg, rgba(230, 24, 213, 0.2), rgba(255, 47, 91, 0.13));
+  border-color: var(--accent-hot);
+  color: var(--text);
+  box-shadow: inset 0 0 14px rgba(240, 0, 220, 0.08);
+}
+
+.heart-rate-mode-picker button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.heart-rate-mode-picker svg {
+  width: 22px;
+  height: 22px;
+  overflow: visible;
 }
 
 .heart-rate-position {
