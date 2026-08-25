@@ -79,6 +79,8 @@ const ui = {
   preview: $("overlay-preview"),
   overlayShadow: $("overlay-shadow"),
   copyOverlayUrl: $("copy-overlay-url"),
+  copyOverlayUrlText: $("copy-overlay-url-text"),
+  copyOverlayUrlLabel: $("copy-overlay-url-label"),
   loadSettingsButton: $("load-settings"),
   loadSettingsDialog: $("load-settings-dialog"),
   loadSettingsForm: $("load-settings-form"),
@@ -512,6 +514,7 @@ function updateMarquees() {
 
 function renderSettings() {
   const unavailableFields = unavailableFieldsByDataSource[state.settings.dataSource] || new Set();
+  ui.copyOverlayUrlText.textContent = buildOverlayUrl();
   ui.preview.dataset.position = state.settings.position;
   ui.preview.classList.toggle("without-cover", state.settings.visible.cover === false);
   ui.preview.style.setProperty(
@@ -1239,10 +1242,12 @@ ui.copyOverlayUrl.addEventListener("click", async () => {
     input.remove();
   }
 
-  ui.copyOverlayUrl.textContent = "Copied!";
+  ui.copyOverlayUrl.classList.add("is-copied");
+  ui.copyOverlayUrlLabel.textContent = "Copied!";
   clearTimeout(ui.copyOverlayUrl.copyResetTimer);
   ui.copyOverlayUrl.copyResetTimer = setTimeout(() => {
-    ui.copyOverlayUrl.textContent = "Copy overlay URL";
+    ui.copyOverlayUrl.classList.remove("is-copied");
+    ui.copyOverlayUrlLabel.textContent = "Click to copy URL";
   }, 2500);
 });
 

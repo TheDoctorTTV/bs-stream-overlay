@@ -15,13 +15,24 @@
 
 <body>
   <main class="app-shell">
-    <aside class="settings-panel" aria-label="Overlay settings">
-      <header class="settings-header">
+    <header class="app-header">
+      <div class="app-brand">
         <img class="brand-mark" src="assets/images/profile-picture.png" alt="" aria-hidden="true" />
         <div>
-          <h1>Overlay settings</h1>
+          <h1>Beat Saber Overlay</h1>
         </div>
-      </header>
+      </div>
+      <div class="preview-actions">
+        <button class="copy-url-button" type="button" id="copy-overlay-url" aria-label="Copy overlay URL">
+          <span class="copy-url-button__url" id="copy-overlay-url-text" aria-hidden="true"></span>
+          <span class="copy-url-button__label" id="copy-overlay-url-label">Click to copy URL</span>
+        </button>
+        <button class="toolbar-button" type="button" id="load-settings">Load settings</button>
+        <button class="toolbar-button toolbar-button--reset" type="button" id="reset-settings">Reset settings</button>
+      </div>
+    </header>
+
+    <aside class="settings-panel" aria-label="Overlay settings">
 
       <a class="repository-link" href="https://github.com/TheDoctorTTV/bs-stream-overlay" target="_blank"
         rel="noopener noreferrer">
@@ -316,20 +327,7 @@
 
     </aside>
 
-    <section class="preview-workspace" aria-labelledby="preview-heading">
-      <header class="preview-toolbar">
-        <div>
-          <span class="toolbar-eyebrow"></span>
-          <h2 id="preview-heading">Overlay preview</h2>
-        </div>
-        <div class="preview-actions">
-          <button class="toolbar-button toolbar-button--primary" type="button" id="copy-overlay-url">Copy overlay
-            URL</button>
-          <button class="toolbar-button" type="button" id="load-settings">Load settings</button>
-          <button class="toolbar-button toolbar-button--reset" type="button" id="reset-settings">Reset settings</button>
-        </div>
-      </header>
-
+    <section class="preview-workspace" aria-label="Overlay preview">
       <div class="preview-stage" id="preview-stage">
         <div class="overlay-shadow" id="overlay-shadow" data-position="top-left" aria-hidden="true"></div>
         <article class="overlay-preview is-awaiting-data" id="overlay-preview" data-position="top-left">
