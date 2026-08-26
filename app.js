@@ -48,6 +48,59 @@ const defaultSettings = {
 const positionKeys = ["top-left", "top-right", "bottom-left", "bottom-right"];
 const visibleKeys = Object.keys(defaultSettings.visible);
 const fontWeightValues = [0, 400, 500, 600, 700, 800, 900];
+const googleFontFamilies = [
+  "Anton",
+  "Archivo",
+  "Archivo Black",
+  "Audiowide",
+  "Bangers",
+  "Barlow",
+  "Barlow Condensed",
+  "Bebas Neue",
+  "Black Ops One",
+  "Bungee",
+  "Chakra Petch",
+  "Cinzel",
+  "Comfortaa",
+  "DM Sans",
+  "Dosis",
+  "Exo 2",
+  "Fira Sans",
+  "Fjalla One",
+  "Fredoka",
+  "Hind",
+  "IBM Plex Sans",
+  "Josefin Sans",
+  "Kanit",
+  "Karla",
+  "Lato",
+  "Lexend",
+  "Lilita One",
+  "Manrope",
+  "Merriweather Sans",
+  "Montserrat",
+  "Nunito",
+  "Orbitron",
+  "Oswald",
+  "Oxanium",
+  "Poppins",
+  "Prompt",
+  "Quicksand",
+  "Rajdhani",
+  "Raleway",
+  "Roboto",
+  "Roboto Condensed",
+  "Roboto Mono",
+  "Rowdies",
+  "Rubik",
+  "Russo One",
+  "Saira",
+  "Saira Condensed",
+  "Space Grotesk",
+  "Teko",
+  "Titillium Web",
+];
+const googleFonts = googleFontFamilies.map((family) => ({ family, label: family }));
 const textTransformValues = ["", "uppercase", "lowercase", "capitalize"];
 const heartRateModeValues = ["paired", "standalone"];
 const unavailableFieldsByDataSource = {
@@ -68,6 +121,7 @@ const state = {
   fonts: [],
   fontsLoaded: false,
   fontsLoading: null,
+  fontSource: typeof window.queryLocalFonts === "function" ? "local" : "google",
   activeFontIndex: -1,
   beatSaberPlusClock: null,
   telemetryClockTimer: null,
@@ -99,6 +153,7 @@ const ui = {
   dataSource: $("data-source"),
   connectionAdvice: $("connection-advice"),
   fontPicker: $("font-picker"),
+  fontDescription: $("font-description"),
   fontSearch: $("font-search"),
   fontOptions: $("font-options"),
   fontStatus: $("font-status"),
@@ -755,6 +810,31 @@ function getSelectedFontLabel() {
   return state.fonts.find(({ family }) => family === state.settings.fontFamily)?.label || state.settings.fontFamily;
 }
 
+function updateFontPickerCopy() {
+  const usingGoogleFonts = state.fontSource === "google";
+  ui.fontDescription.textContent = usingGoogleFonts
+    ? "Choose from free Google Fonts because local font access is unavailable."
+    : "Search the fonts installed on this system.";
+  ui.fontSearch.placeholder = usingGoogleFonts ? "Search Google Fonts" : "Search installed fonts";
+  ui.fontOptions.setAttribute("aria-label", usingGoogleFonts ? "Free Google Fonts" : "Installed fonts");
+}
+
+function useGoogleFontFallback(status) {
+  state.fontSource = "google";
+  state.fonts = googleFonts;
+  state.fontsLoaded = true;
+  ui.fontStatus.textContent = status;
+  updateFontPickerCopy();
+}
+
+function initializeFontPicker() {
+  if (state.fontSource === "google") {
+    useGoogleFontFallback("Local fonts are unavailable here. Showing free Google Fonts.");
+  } else {
+    updateFontPickerCopy();
+  }
+}
+
 function setFontPickerOpen(open) {
   ui.fontPicker.classList.toggle("is-open", open);
   ui.fontOptions.hidden = !open;
@@ -795,12 +875,13 @@ function renderFontOptions() {
   if (!fonts.length) {
     const empty = document.createElement("p");
     empty.className = "font-options__empty";
+    const sourceLabel = state.fontSource === "google" ? "Google Fonts" : "installed fonts";
     empty.textContent = state.fontsLoading
       ? "Waiting for local font permission…"
       : state.fontsLoaded
         ? state.fonts.length
-          ? "No installed fonts match that search."
-          : "No local fonts were returned by the browser."
+          ? `No ${sourceLabel} match that search.`
+          : "No fonts are available."
         : "Allow local font access to load installed fonts.";
     ui.fontOptions.append(empty);
   }
@@ -821,7 +902,7 @@ async function loadLocalFonts() {
   if (state.fontsLoading) return state.fontsLoading;
 
   if (typeof window.queryLocalFonts !== "function") {
-    ui.fontStatus.textContent = "This browser does not provide local font access.";
+    useGoogleFontFallback("Local fonts are unavailable here. Showing free Google Fonts.");
     renderFontOptions();
     return;
   }
@@ -831,17 +912,21 @@ async function loadLocalFonts() {
     .then((fontData) => {
       const families = [...new Set(fontData.map(({ family }) => normalizeFontFamily(family)).filter(Boolean))]
         .sort((a, b) => a.localeCompare(b));
+      if (!families.length) {
+        useGoogleFontFallback("No local fonts were returned. Showing free Google Fonts.");
+        return;
+      }
+
+      state.fontSource = "local";
       state.fonts = families.map((family) => ({ family, label: family }));
       state.fontsLoaded = true;
-      ui.fontStatus.textContent = families.length
-        ? `${families.length.toLocaleString()} local fonts available.`
-        : "No local fonts were returned by the browser.";
+      ui.fontStatus.textContent = `${families.length.toLocaleString()} local fonts available.`;
+      updateFontPickerCopy();
     })
     .catch((error) => {
-      state.fontsLoaded = false;
-      ui.fontStatus.textContent = error?.name === "NotAllowedError"
-        ? "Local font access was not allowed. Click the search box to try again."
-        : "Local font access failed. Click the search box to try again.";
+      useGoogleFontFallback(error?.name === "NotAllowedError"
+        ? "Local font access was not allowed. Showing free Google Fonts."
+        : "Local font access failed. Showing free Google Fonts.");
     })
     .finally(() => {
       state.fontsLoading = null;
@@ -1562,6 +1647,7 @@ document.fonts?.ready.then(updateMarquees);
 document.documentElement.classList.toggle("overlay-mode", isOverlayMode);
 document.body.classList.toggle("overlay-mode", isOverlayMode);
 ui.preview.classList.toggle("is-awaiting-data", isOverlayMode);
+initializeFontPicker();
 updateResolutionScale();
 renderSettings();
 if (!isOverlayMode) saveSettings();
