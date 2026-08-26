@@ -43,7 +43,7 @@ To use this feature, install HRCounter, enable its HTTP server, and enter its po
 
 ## Font selection compatibility
 
-Selecting from locally installed system fonts requires a Chromium-based browser, such as Google Chrome, Microsoft Edge, Brave, or Opera/OperaGX.
+Chromium-based browsers, such as Google Chrome, Microsoft Edge, Brave, or Opera/OperaGX, can request access to locally installed system fonts. Browsers without local font access, including Firefox, automatically show a curated selection of free Google Fonts instead.
 
 ## Create your overlay
 
