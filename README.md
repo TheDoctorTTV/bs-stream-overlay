@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/icons/bs-overlay-icon.svg" alt="BS Stream Overlay icon" width="180">
+  <img src="assets/icons/bs-overlay-icon.png" alt="BS Stream Overlay icon" width="180">
 </p>
 
 # BS Stream Overlay
