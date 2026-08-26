@@ -15,6 +15,7 @@ const defaultSettings = {
   fontScale: 100,
   textTransform: "",
   accentColor: "#f000dc",
+  accentColor2: null,
   overlayScale: 100,
   shadow: {
     enabled: true,
@@ -73,6 +74,10 @@ const state = {
   connectionGeneration: 0,
   availableDataSources: [],
 };
+let activeAccentStop = 0;
+let accentPickerOpen = false;
+let accentSaturationDragging = false;
+let lastAccentColor2 = "#ff2d68";
 
 const $ = (id) => document.getElementById(id);
 const ui = {
@@ -101,7 +106,18 @@ const ui = {
   fontSize: $("font-size"),
   fontSizeValue: $("font-size-value"),
   textTransform: $("text-transform"),
-  accentColor: $("accent-color"),
+  accentControl: $("accent-control"),
+  accentPicker: $("accent-picker"),
+  accentPickerLabel: $("accent-picker-label"),
+  accentModeButtons: document.querySelectorAll("[data-accent-mode]"),
+  accentStopButtons: document.querySelectorAll("[data-accent-stop]"),
+  accentColor1Value: $("accent-color-1-value"),
+  accentColor2Value: $("accent-color-2-value"),
+  accentSaturation: $("accent-saturation"),
+  accentHue: $("accent-hue"),
+  accentHex: $("accent-hex"),
+  accentHexSwatch: $("accent-hex-swatch"),
+  closeAccentPicker: $("close-accent-picker"),
   overlayScale: $("overlay-scale"),
   overlayScaleValue: $("overlay-scale-value"),
   shadowEnabled: $("shadow-enabled"),
@@ -155,6 +171,7 @@ function loadSettings() {
     fontScale: normalizeFontScale(saved?.fontScale),
     textTransform: normalizeTextTransform(saved?.textTransform),
     accentColor: normalizeAccentColor(saved?.accentColor),
+    accentColor2: normalizeOptionalAccentColor(saved?.accentColor2),
     overlayScale: normalizeOverlayScale(saved?.overlayScale),
     shadow: {
       enabled: saved?.shadow?.enabled !== false,
@@ -196,6 +213,10 @@ function loadSettings() {
 
   const urlAccentColor = params.get("accent");
   if (urlAccentColor !== null) settings.accentColor = normalizeAccentColor(urlAccentColor);
+
+  const urlAccentColor2 = params.get("accent2");
+  if (urlAccentColor2 !== null) settings.accentColor2 = normalizeOptionalAccentColor(urlAccentColor2);
+  else if (isOverlayMode) settings.accentColor2 = null;
 
   const urlOverlayScale = params.get("overlayscale");
   if (urlOverlayScale !== null) settings.overlayScale = normalizeOverlayScale(urlOverlayScale);
@@ -250,6 +271,10 @@ function normalizeAccentColor(value) {
   return /^#[0-9a-f]{6}$/i.test(value || "") ? value.toLowerCase() : defaultSettings.accentColor;
 }
 
+function normalizeOptionalAccentColor(value) {
+  return /^#[0-9a-f]{6}$/i.test(value || "") ? value.toLowerCase() : null;
+}
+
 function normalizeOverlayScale(value) {
   const scale = Math.round(Number(value) / 5) * 5;
   return Number.isFinite(scale) ? Math.max(50, Math.min(200, scale)) : defaultSettings.overlayScale;
@@ -276,14 +301,50 @@ function getContrastRatio(firstLuminance, secondLuminance) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-function getAccentTextColor(accentColor) {
-  const accentLuminance = getRelativeLuminance(accentColor);
+function getAccentTextColor(...accentColors) {
   const darkText = "#181719";
   const lightText = "#ffffff";
-  return getContrastRatio(accentLuminance, getRelativeLuminance(darkText)) >
-    getContrastRatio(accentLuminance, getRelativeLuminance(lightText))
+  const colors = accentColors.filter(Boolean);
+  const darkContrast = Math.min(...colors.map((color) =>
+    getContrastRatio(getRelativeLuminance(color), getRelativeLuminance(darkText))));
+  const lightContrast = Math.min(...colors.map((color) =>
+    getContrastRatio(getRelativeLuminance(color), getRelativeLuminance(lightText))));
+  return darkContrast > lightContrast
     ? darkText
     : lightText;
+}
+
+function hexToHsv(color) {
+  const [red, green, blue] = [1, 3, 5].map((offset) => Number.parseInt(color.slice(offset, offset + 2), 16) / 255);
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+
+  if (delta) {
+    if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+    else if (max === green) hue = 60 * ((blue - red) / delta + 2);
+    else hue = 60 * ((red - green) / delta + 4);
+  }
+
+  return {
+    h: Math.round((hue + 360) % 360),
+    s: max ? Math.round((delta / max) * 100) : 0,
+    v: Math.round(max * 100),
+  };
+}
+
+function hsvToHex(hue, saturation, value) {
+  const h = ((Number(hue) % 360) + 360) % 360;
+  const s = Math.max(0, Math.min(100, Number(saturation))) / 100;
+  const v = Math.max(0, Math.min(100, Number(value))) / 100;
+  const chroma = v * s;
+  const x = chroma * (1 - Math.abs((h / 60) % 2 - 1));
+  const match = v - chroma;
+  const sectors = [[chroma, x, 0], [x, chroma, 0], [0, chroma, x], [0, x, chroma], [x, 0, chroma], [chroma, 0, x]];
+  const channels = sectors[Math.min(5, Math.floor(h / 60))].map((channel) =>
+    Math.round((channel + match) * 255).toString(16).padStart(2, "0"));
+  return `#${channels.join("")}`;
 }
 
 function normalizeHeartRateMode(value) {
@@ -319,6 +380,8 @@ function applySettingsToUrl(url) {
   if (state.settings.accentColor !== defaultSettings.accentColor) {
     url.searchParams.set("accent", state.settings.accentColor);
   } else url.searchParams.delete("accent");
+  if (state.settings.accentColor2) url.searchParams.set("accent2", state.settings.accentColor2);
+  else url.searchParams.delete("accent2");
   if (state.settings.overlayScale !== defaultSettings.overlayScale) {
     url.searchParams.set("overlayscale", String(state.settings.overlayScale));
   } else url.searchParams.delete("overlayscale");
@@ -352,6 +415,75 @@ function saveSettings() {
   try {
     localStorage.setItem(storageKey, JSON.stringify(state.settings));
   } catch { }
+}
+
+function getActiveAccentColor() {
+  return activeAccentStop === 1 && state.settings.accentColor2
+    ? state.settings.accentColor2
+    : state.settings.accentColor;
+}
+
+function setActiveAccentColor(color) {
+  const normalizedColor = normalizeAccentColor(color);
+  if (activeAccentStop === 1 && state.settings.accentColor2) {
+    state.settings.accentColor2 = normalizedColor;
+    lastAccentColor2 = normalizedColor;
+  } else {
+    state.settings.accentColor = normalizedColor;
+  }
+  saveSettings();
+  renderSettings();
+}
+
+function renderAccentControl() {
+  const colors = [state.settings.accentColor, state.settings.accentColor2];
+  const hasGradient = Boolean(state.settings.accentColor2);
+  const activeColor = getActiveAccentColor();
+  const hsv = hexToHsv(activeColor);
+
+  ui.accentControl.classList.toggle("has-gradient", hasGradient);
+  ui.accentModeButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.accentMode === (hasGradient ? "2" : "1")));
+  });
+  ui.accentStopButtons.forEach((button, index) => {
+    button.hidden = index === 1 && !hasGradient;
+    button.setAttribute("aria-pressed", String(accentPickerOpen && index === activeAccentStop));
+    button.style.setProperty("--stop-color", colors[index] || lastAccentColor2);
+  });
+  ui.accentColor1Value.textContent = state.settings.accentColor.toUpperCase();
+  ui.accentColor2Value.textContent = (state.settings.accentColor2 || lastAccentColor2).toUpperCase();
+  ui.accentPicker.hidden = !accentPickerOpen;
+  ui.accentPickerLabel.textContent = hasGradient
+    ? `Color ${activeAccentStop + 1} · ${activeAccentStop === 0 ? "left" : "right"}`
+    : "Accent color";
+  ui.accentSaturation.style.setProperty("--picker-hue", String(hsv.h));
+  ui.accentSaturation.style.setProperty("--picker-saturation", `${hsv.s}%`);
+  ui.accentSaturation.style.setProperty("--picker-value-position", `${100 - hsv.v}%`);
+  ui.accentSaturation.setAttribute("aria-valuenow", String(hsv.v));
+  ui.accentSaturation.setAttribute("aria-valuetext", `${hsv.s}% saturation, ${hsv.v}% brightness`);
+  ui.accentHue.value = String(hsv.h);
+  ui.accentHue.style.setProperty("--picker-hue", String(hsv.h));
+  ui.accentHex.value = activeColor.slice(1).toUpperCase();
+  ui.accentHexSwatch.style.setProperty("--picker-color", activeColor);
+}
+
+function setAccentMode(mode) {
+  if (mode === 2) {
+    state.settings.accentColor2 = state.settings.accentColor2 || lastAccentColor2;
+  } else {
+    if (state.settings.accentColor2) lastAccentColor2 = state.settings.accentColor2;
+    state.settings.accentColor2 = null;
+    activeAccentStop = 0;
+  }
+  saveSettings();
+  renderSettings();
+}
+
+function updateAccentFromSaturationPointer(event) {
+  const rect = ui.accentSaturation.getBoundingClientRect();
+  const saturation = Math.round(Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width)) * 100);
+  const value = Math.round((1 - Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height))) * 100);
+  setActiveAccentColor(hsvToHex(ui.accentHue.value, saturation, value));
 }
 
 function formatNumber(value, digits = 0) {
@@ -524,8 +656,15 @@ function renderSettings() {
   ui.preview.style.setProperty("--overlay-text-scale", String(state.settings.fontScale / 100));
   ui.preview.style.setProperty("--overlay-font-weight", String(state.settings.fontWeight || 400));
   ui.preview.style.setProperty("--overlay-text-transform", state.settings.textTransform || "none");
+  const accentBackground = state.settings.accentColor2
+    ? `linear-gradient(90deg, ${state.settings.accentColor}, ${state.settings.accentColor2})`
+    : state.settings.accentColor;
   ui.preview.style.setProperty("--overlay-accent", state.settings.accentColor);
-  ui.preview.style.setProperty("--overlay-accent-text", getAccentTextColor(state.settings.accentColor));
+  ui.preview.style.setProperty("--overlay-accent-background", accentBackground);
+  ui.preview.style.setProperty(
+    "--overlay-accent-text",
+    getAccentTextColor(state.settings.accentColor, state.settings.accentColor2),
+  );
   ui.preview.classList.toggle("has-custom-font-weight", Boolean(state.settings.fontWeight));
   ui.preview.classList.toggle("has-custom-text-transform", Boolean(state.settings.textTransform));
   ui.heartRateStandalone.style.setProperty(
@@ -543,7 +682,7 @@ function renderSettings() {
   ui.fontSize.value = String(state.settings.fontScale);
   ui.fontSizeValue.value = `${state.settings.fontScale}%`;
   ui.textTransform.value = state.settings.textTransform;
-  ui.accentColor.value = state.settings.accentColor;
+  renderAccentControl();
   ui.overlayScale.value = String(state.settings.overlayScale);
   ui.overlayScaleValue.value = `${state.settings.overlayScale}%`;
   ui.shadowEnabled.checked = state.settings.shadow.enabled;
@@ -1132,10 +1271,65 @@ ui.textTransform.addEventListener("change", () => {
   renderSettings();
 });
 
-ui.accentColor.addEventListener("input", () => {
-  state.settings.accentColor = normalizeAccentColor(ui.accentColor.value);
-  saveSettings();
-  renderSettings();
+ui.accentModeButtons.forEach((button) => {
+  button.addEventListener("click", () => setAccentMode(Number(button.dataset.accentMode)));
+});
+
+ui.accentStopButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    activeAccentStop = Number(button.dataset.accentStop);
+    accentPickerOpen = true;
+    renderAccentControl();
+  });
+});
+
+ui.closeAccentPicker.addEventListener("click", () => {
+  accentPickerOpen = false;
+  renderAccentControl();
+});
+
+ui.accentSaturation.addEventListener("pointerdown", (event) => {
+  accentSaturationDragging = true;
+  ui.accentSaturation.setPointerCapture(event.pointerId);
+  updateAccentFromSaturationPointer(event);
+});
+
+ui.accentSaturation.addEventListener("pointermove", (event) => {
+  if (accentSaturationDragging) updateAccentFromSaturationPointer(event);
+});
+
+ui.accentSaturation.addEventListener("pointerup", (event) => {
+  accentSaturationDragging = false;
+  if (ui.accentSaturation.hasPointerCapture(event.pointerId)) {
+    ui.accentSaturation.releasePointerCapture(event.pointerId);
+  }
+});
+
+ui.accentSaturation.addEventListener("keydown", (event) => {
+  if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+  event.preventDefault();
+  const hsv = hexToHsv(getActiveAccentColor());
+  const amount = event.shiftKey ? 5 : 1;
+  if (event.key === "ArrowLeft") hsv.s -= amount;
+  if (event.key === "ArrowRight") hsv.s += amount;
+  if (event.key === "ArrowUp") hsv.v += amount;
+  if (event.key === "ArrowDown") hsv.v -= amount;
+  setActiveAccentColor(hsvToHex(hsv.h, hsv.s, hsv.v));
+});
+
+ui.accentHue.addEventListener("input", () => {
+  const hsv = hexToHsv(getActiveAccentColor());
+  setActiveAccentColor(hsvToHex(ui.accentHue.value, hsv.s, hsv.v));
+});
+
+ui.accentHex.addEventListener("input", () => {
+  const candidate = `#${ui.accentHex.value.replace(/[^0-9a-f]/gi, "").slice(0, 6)}`;
+  ui.accentHex.value = candidate.slice(1).toUpperCase();
+  if (/^#[0-9a-f]{6}$/i.test(candidate)) setActiveAccentColor(candidate);
+});
+
+ui.accentHex.addEventListener("blur", () => {
+  ui.accentHex.value = getActiveAccentColor().slice(1).toUpperCase();
 });
 
 ui.overlayScale.addEventListener("input", () => {
@@ -1216,10 +1410,22 @@ ui.fontSearch.addEventListener("keydown", (event) => {
 
 document.addEventListener("pointerdown", (event) => {
   if (!ui.fontPicker.contains(event.target)) setFontPickerOpen(false);
+  if (!ui.accentControl.contains(event.target) && accentPickerOpen) {
+    accentPickerOpen = false;
+    renderAccentControl();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !accentPickerOpen) return;
+  accentPickerOpen = false;
+  renderAccentControl();
 });
 
 $("reset-settings").addEventListener("click", () => {
   state.settings = structuredClone(defaultSettings);
+  activeAccentStop = 0;
+  accentPickerOpen = false;
   saveSettings();
   renderSettings();
   connectTelemetry();
@@ -1275,6 +1481,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     const loadedScale = loadedUrl.searchParams.get("scale");
     const loadedTextTransform = loadedUrl.searchParams.get("case");
     const loadedAccentColor = loadedUrl.searchParams.get("accent");
+    const loadedAccentColor2 = loadedUrl.searchParams.get("accent2");
     const loadedOverlayScale = loadedUrl.searchParams.get("overlayscale");
     const loadedShadowEnabled = loadedUrl.searchParams.get("shadow");
     const loadedShadowStrength = loadedUrl.searchParams.get("shadowstrength");
@@ -1287,7 +1494,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     }
 
     if (loadedDataSource === null && loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
-      loadedScale === null && loadedTextTransform === null && loadedAccentColor === null &&
+      loadedScale === null && loadedTextTransform === null && loadedAccentColor === null && loadedAccentColor2 === null &&
       loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
       loadedHeartRateMode === null &&
       loadedHeartRatePosition === null && loadedHeartRatePort === null) {
@@ -1314,6 +1521,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     if (loadedScale !== null) nextSettings.fontScale = normalizeFontScale(loadedScale);
     if (loadedTextTransform !== null) nextSettings.textTransform = normalizeTextTransform(loadedTextTransform);
     if (loadedAccentColor !== null) nextSettings.accentColor = normalizeAccentColor(loadedAccentColor);
+    nextSettings.accentColor2 = normalizeOptionalAccentColor(loadedAccentColor2);
     if (loadedOverlayScale !== null) nextSettings.overlayScale = normalizeOverlayScale(loadedOverlayScale);
     if (loadedShadowEnabled !== null) nextSettings.shadow.enabled = loadedShadowEnabled !== "0";
     if (loadedShadowStrength !== null) {

@@ -56,6 +56,6 @@ Selecting from locally installed system fonts requires a Chromium-based browser,
 7. Add a browser source in OBS, Streamlabs, Meld, or another supported streaming application.
 8. Paste the copied URL into the browser source.
 
-Your selected settings are stored in the generated URL, so the browser source will use the same layout, scale, accent color, corner shadow, and visible fields. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
+Your selected settings are stored in the generated URL, so the browser source will use the same layout, scale, one-color or two-color accent, corner shadow, and visible fields. Two-color accents render as a horizontal gradient from color 1 on the left to color 2 on the right. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
 
 DataPuller exposes some fields that BS+ SO does not, including NJS and (depending on the map) a BSR key. Unavailable values are shown as a dash or hidden when using BS+.
