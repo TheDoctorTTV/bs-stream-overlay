@@ -369,8 +369,8 @@ select {
 }
 
 .font-search input::-webkit-search-cancel-button {
-  filter: invert(1);
-  opacity: 0.55;
+  filter: brightness(0) invert(1);
+  opacity: 0.62;
 }
 
 .font-options {
@@ -491,34 +491,242 @@ select {
   box-shadow: 0 0 0 2px rgba(240, 0, 220, 0.13);
 }
 
-.color-control input[type="color"] {
-  width: 42px;
-  height: 32px;
+.accent-control {
+  padding: 2px 0 14px;
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.accent-control__heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+}
+
+.accent-control__heading > span,
+.accent-stop > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.accent-control b,
+.accent-picker__topline,
+.accent-hue > span,
+.accent-hex > span {
+  font-size: 0.7rem;
+}
+
+.accent-control small {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.accent-mode-picker {
+  display: flex;
   padding: 3px;
+  background: rgba(13, 12, 14, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 10px;
+}
+
+.accent-mode-picker button,
+.accent-picker__topline button {
+  padding: 5px 8px;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.6rem;
+  font-weight: 800;
+}
+
+.accent-mode-picker button[aria-pressed="true"] {
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.26);
+}
+
+.accent-mode-picker button:focus-visible,
+.accent-stop:focus-visible,
+.accent-picker__topline button:focus-visible,
+.accent-saturation:focus-visible,
+.accent-hue input:focus-visible,
+.accent-hex input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.accent-stops {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.accent-stop {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 9px;
+  align-items: center;
+  min-width: 0;
+  padding: 8px;
+  background: rgba(13, 12, 14, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 11px;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+
+.accent-control:not(.has-gradient) .accent-stop:first-child {
+  grid-column: 1 / -1;
+}
+
+.accent-stop:hover,
+.accent-stop[aria-pressed="true"] {
+  border-color: rgba(255, 255, 255, 0.48);
+}
+
+.accent-stop[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px rgba(240, 0, 220, 0.12);
+}
+
+.accent-stop[hidden],
+.accent-picker[hidden] {
+  display: none;
+}
+
+.accent-stop__swatch {
+  width: 34px;
+  height: 34px;
+  background: var(--stop-color, var(--accent));
+  border: 2px solid rgba(255, 255, 255, 0.82);
+  border-radius: 9px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+}
+
+.accent-picker {
+  display: grid;
+  gap: 11px;
+  margin-top: 9px;
+  padding: 12px;
   background: #1d1a1e;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 9px;
+  border-radius: 13px;
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+}
+
+.accent-picker__topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 800;
+}
+
+.accent-picker__topline button {
+  color: #ff75ec;
+}
+
+.accent-saturation {
+  position: relative;
+  height: 116px;
+  overflow: hidden;
+  background:
+    linear-gradient(to top, #000, transparent),
+    linear-gradient(to right, #fff, transparent),
+    hsl(var(--picker-hue, 308) 100% 50%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.accent-saturation__marker {
+  position: absolute;
+  top: var(--picker-value-position, 0%);
+  left: var(--picker-saturation, 100%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+.accent-hue,
+.accent-hex {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.accent-hue input {
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  margin: 0;
+  background: linear-gradient(90deg, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+  border: 0;
+  border-radius: 999px;
   cursor: pointer;
 }
 
-.color-control input[type="color"]:focus-visible {
-  border-color: var(--accent-hot);
-  box-shadow: 0 0 0 2px rgba(240, 0, 220, 0.13);
-  outline: 0;
+.accent-hue input::-webkit-slider-thumb {
+  appearance: none;
+  width: 17px;
+  height: 17px;
+  background: hsl(var(--picker-hue, 308) 100% 50%);
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
 }
 
-.color-control input[type="color"]::-webkit-color-swatch-wrapper {
+.accent-hue input::-moz-range-thumb {
+  width: 13px;
+  height: 13px;
+  background: hsl(var(--picker-hue, 308) 100% 50%);
+  border: 2px solid white;
+  border-radius: 50%;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
+}
+
+.accent-hex > div {
+  display: grid;
+  grid-template-columns: 22px auto minmax(0, 1fr);
+  align-items: center;
+  min-width: 0;
+  padding: 7px 9px;
+  background: rgba(13, 12, 14, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 9px;
+  color: var(--muted);
+}
+
+.accent-hex i {
+  width: 14px;
+  height: 14px;
+  background: var(--picker-color, var(--accent));
+  border-radius: 4px;
+}
+
+.accent-hex input {
+  width: 100%;
+  min-width: 0;
   padding: 0;
-}
-
-.color-control input[type="color"]::-webkit-color-swatch {
+  background: transparent;
   border: 0;
-  border-radius: 6px;
-}
-
-.color-control input[type="color"]::-moz-color-swatch {
-  border: 0;
-  border-radius: 6px;
+  color: var(--text);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  outline: 0;
+  text-transform: uppercase;
 }
 
 .type-control--range {
@@ -1293,7 +1501,7 @@ select {
 
 .difficulty {
   padding: 7px 12px;
-  background: var(--overlay-accent, var(--accent));
+  background: var(--overlay-accent-background, var(--overlay-accent, var(--accent)));
   color: var(--overlay-accent-text, white);
   border-radius: 999px;
   box-shadow: 0 5px 14px rgba(20, 20, 20, 0.2);

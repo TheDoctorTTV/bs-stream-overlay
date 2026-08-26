@@ -87,10 +87,48 @@
           <p>Customize the accent used by the overlay.</p>
         </div>
 
-        <label class="type-control color-control" for="accent-color">
-          <span><b>Accent color</b><small>Difficulty and BSR pills</small></span>
-          <input type="color" id="accent-color" value="#f000dc" />
-        </label>
+        <div class="accent-control" id="accent-control">
+          <div class="accent-control__heading">
+            <span><b>Accent color</b><small>Difficulty and BSR pills</small></span>
+            <div class="accent-mode-picker" role="group" aria-label="Accent color count">
+              <button type="button" data-accent-mode="1" aria-pressed="true">1 color</button>
+              <button type="button" data-accent-mode="2" aria-pressed="false">2 colors</button>
+            </div>
+          </div>
+
+          <div class="accent-stops" id="accent-stops">
+            <button class="accent-stop" type="button" data-accent-stop="0" aria-label="Edit accent color"
+              aria-pressed="false">
+              <span class="accent-stop__swatch" aria-hidden="true"></span>
+              <span><b>Color 1</b><small id="accent-color-1-value">#F000DC</small></span>
+            </button>
+            <button class="accent-stop" type="button" data-accent-stop="1" aria-label="Edit right gradient color"
+              aria-pressed="false" hidden>
+              <span class="accent-stop__swatch" aria-hidden="true"></span>
+              <span><b>Color 2</b><small id="accent-color-2-value">#FF2D68</small></span>
+            </button>
+          </div>
+
+          <div class="accent-picker" id="accent-picker" hidden>
+            <div class="accent-picker__topline">
+              <span id="accent-picker-label">Color 1</span>
+              <button type="button" id="close-accent-picker" aria-label="Close color picker">Done</button>
+            </div>
+            <div class="accent-saturation" id="accent-saturation" tabindex="0" role="slider"
+              aria-label="Color saturation and brightness" aria-valuemin="0" aria-valuemax="100">
+              <span class="accent-saturation__marker" aria-hidden="true"></span>
+            </div>
+            <label class="accent-hue" for="accent-hue">
+              <span>Hue</span>
+              <input type="range" id="accent-hue" min="0" max="359" step="1" value="308" />
+            </label>
+            <label class="accent-hex" for="accent-hex">
+              <span>Hex</span>
+              <div><i id="accent-hex-swatch" aria-hidden="true"></i><span>#</span><input type="text" id="accent-hex"
+                  value="F000DC" maxlength="6" inputmode="text" autocomplete="off" spellcheck="false" /></div>
+            </label>
+          </div>
+        </div>
 
         <label class="type-control type-control--range" for="overlay-scale">
           <span><b>Overlay scale</b><output id="overlay-scale-value" for="overlay-scale">100%</output></span>
