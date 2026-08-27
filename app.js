@@ -813,9 +813,9 @@ function getSelectedFontLabel() {
 function updateFontPickerCopy() {
   const usingGoogleFonts = state.fontSource === "google";
   ui.fontDescription.textContent = usingGoogleFonts
-    ? "Choose from free Google Fonts because local font access is unavailable."
+    ? "Choose a free Google Font, or enter the exact name of an installed font and press Enter."
     : "Search the fonts installed on this system.";
-  ui.fontSearch.placeholder = usingGoogleFonts ? "Search Google Fonts" : "Search installed fonts";
+  ui.fontSearch.placeholder = usingGoogleFonts ? "Google Font or installed font name" : "Search installed fonts";
   ui.fontOptions.setAttribute("aria-label", usingGoogleFonts ? "Free Google Fonts" : "Installed fonts");
 }
 
@@ -876,11 +876,14 @@ function renderFontOptions() {
     const empty = document.createElement("p");
     empty.className = "font-options__empty";
     const sourceLabel = state.fontSource === "google" ? "Google Fonts" : "installed fonts";
+    const customFamily = normalizeFontFamily(ui.fontSearch.value);
     empty.textContent = state.fontsLoading
       ? "Waiting for local font permission…"
       : state.fontsLoaded
         ? state.fonts.length
-          ? `No ${sourceLabel} match that search.`
+          ? state.fontSource === "google" && customFamily
+            ? `No Google Fonts match. Press Enter to use “${customFamily}” as an installed font.`
+            : `No ${sourceLabel} match that search.`
           : "No fonts are available."
         : "Allow local font access to load installed fonts.";
     ui.fontOptions.append(empty);
@@ -1478,12 +1481,18 @@ ui.fontSearch.addEventListener("keydown", (event) => {
   if (!["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) return;
   event.preventDefault();
   const fonts = getFilteredFonts();
-  if (!fonts.length) return;
 
   if (event.key === "Enter") {
-    if (state.activeFontIndex >= 0) selectFont(fonts[state.activeFontIndex].family);
+    if (state.activeFontIndex >= 0 && fonts[state.activeFontIndex]) {
+      selectFont(fonts[state.activeFontIndex].family);
+    } else if (state.fontSource === "google") {
+      const customFamily = normalizeFontFamily(ui.fontSearch.value);
+      if (customFamily) selectFont(customFamily);
+    }
     return;
   }
+
+  if (!fonts.length) return;
 
   const direction = event.key === "ArrowDown" ? 1 : -1;
   state.activeFontIndex = (state.activeFontIndex + direction + fonts.length) % fonts.length;
