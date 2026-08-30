@@ -460,7 +460,7 @@ select {
   border-bottom: 0;
 }
 
-.type-control > span {
+.type-control>span {
   display: grid;
   gap: 2px;
 }
@@ -504,16 +504,16 @@ select {
   min-height: 48px;
 }
 
-.accent-control__heading > span,
-.accent-stop > span:last-child {
+.accent-control__heading>span,
+.accent-stop>span:last-child {
   display: grid;
   gap: 2px;
 }
 
 .accent-control b,
 .accent-picker__topline,
-.accent-hue > span,
-.accent-hex > span {
+.accent-hue>span,
+.accent-hex>span {
   font-size: 0.7rem;
 }
 
@@ -695,7 +695,7 @@ select {
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.65);
 }
 
-.accent-hex > div {
+.accent-hex>div {
   display: grid;
   grid-template-columns: 22px auto minmax(0, 1fr);
   align-items: center;
@@ -735,7 +735,7 @@ select {
   padding: 12px 0 14px;
 }
 
-.type-control--range > span {
+.type-control--range>span {
   display: flex;
   justify-content: space-between;
 }
@@ -987,7 +987,7 @@ select {
 }
 
 .heart-rate-provider-settings label,
-.heart-rate-provider-settings label > span {
+.heart-rate-provider-settings label>span {
   display: grid;
   gap: 4px;
 }
@@ -999,7 +999,7 @@ select {
   align-items: center;
 }
 
-.provider-auth-row > span {
+.provider-auth-row>span {
   display: grid;
   gap: 4px;
 }
@@ -1304,14 +1304,12 @@ select {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(
-    ellipse 120% 65% at var(--shadow-x) var(--shadow-y),
-    rgb(0 0 0 / 0.96) 0%,
-    rgb(0 0 0 / 0.72) 34%,
-    rgb(0 0 0 / 0.36) 60%,
-    rgb(0 0 0 / 0.14) 80%,
-    transparent 100%
-  );
+  background: radial-gradient(ellipse 120% 65% at var(--shadow-x) var(--shadow-y),
+      rgb(0 0 0 / 0.96) 0%,
+      rgb(0 0 0 / 0.72) 34%,
+      rgb(0 0 0 / 0.36) 60%,
+      rgb(0 0 0 / 0.14) 80%,
+      transparent 100%);
   opacity: var(--overlay-shadow-strength, 1);
   transition: opacity 700ms ease;
 }
@@ -1528,6 +1526,7 @@ select {
 }
 
 @keyframes marquee-overflow {
+
   0%,
   14% {
     transform: translateX(0);
@@ -1541,11 +1540,9 @@ select {
 
 .song-copy h3 {
   margin: 0;
-  font-size: clamp(
-    calc(1.25rem * var(--overlay-text-scale, 1)),
-    calc(2.1vw * var(--overlay-text-scale, 1)),
-    calc(2rem * var(--overlay-text-scale, 1))
-  );
+  font-size: clamp(calc(1.25rem * var(--overlay-text-scale, 1)),
+      calc(2.1vw * var(--overlay-text-scale, 1)),
+      calc(2rem * var(--overlay-text-scale, 1)));
   font-weight: 900;
   letter-spacing: -0.035em;
   line-height: 1.08;
@@ -1696,7 +1693,7 @@ select {
   line-height: 1;
 }
 
-.heart-rate-paired > span {
+.heart-rate-paired>span {
   color: rgba(255, 255, 255, 0.72);
   font-size: calc(0.58rem * var(--overlay-text-scale, 1));
   font-weight: 900;
@@ -1716,6 +1713,7 @@ select {
 }
 
 @keyframes heart-rate-pulse {
+
   0%,
   38%,
   100% {
