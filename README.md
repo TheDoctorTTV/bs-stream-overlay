@@ -33,25 +33,17 @@ The heart icon pulses at the reported rate and changes color as your heart rate 
 - **151–179 BPM:** gradually changes from yellow to red
 - **180 BPM or higher:** red (`#ff4860`)
 
-To use this feature, install HRCounter, enable its HTTP server, and enter its port in the overlay settings. The default HRCounter port is `65302`. You can also select **Pulsoid** or **HypeRate** as a fallback. HRCounter remains the preferred source whenever it reports a valid BPM; the selected fallback takes over automatically when the local endpoint returns no data, including while Beat Saber is in the menu.
+To use this feature, install HRCounter, enable its HTTP server, and enter its port in the overlay settings. You can also select **Pulsoid** or **HypeRate** as a fallback.
 
-**Pulsoid is the paid option.** It uses one-click account authorization with the `data:heart_rate:read` scope, and the Pulsoid account connecting to the overlay must have BRO or lifetime access. Select **Pulsoid**, choose **Connect Pulsoid**, approve BS Overlay, and you will return to the settings page automatically.
+**Pulsoid** It uses one-click account authorization with the `data:heart_rate:read` scope, and the Pulsoid account connecting to the overlay must have BRO plan. Select **Pulsoid**, choose **Connect Pulsoid**, approve BS Overlay, and you will return to the settings page automatically.
 
-**HypeRate is the free option.** It only requires the ID at the end of your public HypeRate URL. For example, enter `122378` for `https://app.hyperate.io/122378`. No personal API key or paid Pulsoid plan is required.
-
-The Pulsoid API client supports these exact Redirect URLs:
-
-- `https://bs-overlay.thetimevortex.net/callback` for production
-- `https://beta.bs-stream-overlay.pages.dev/callback` for the beta deployment
-- `http://127.0.0.1:5500/callback` for local development
-
-The overlay automatically selects the matching `/callback` URL from its current origin. The Pulsoid access token is stored in the copied overlay URL fragment so it is not sent to the overlay host, but anyone with the complete URL can still read it. Keep a Pulsoid-enabled OBS browser-source URL private. The Pulsoid Client Secret is server-only and is never used by this static overlay. HypeRate URLs contain only the public HypeRate ID.
+**HypeRate** It only requires the ID that you device will show.
 
 ## Requirements
 
 - DataPuller or BS+ SO installed and enabled in Beat Saber
 - HRCounter installed and its HTTP server enabled (optional, for heart rate)
-- A Pulsoid BRO/lifetime account (paid option) or public HypeRate ID (free option) for the optional heart-rate fallback
+- A Pulsoid BRO plan account or public HypeRate ID for the optional heart-rate fallback
 - Streaming software that supports browser sources, such as OBS Studio, Streamlabs Desktop, Meld Studio, or similar software
 
 ## Font selection compatibility
