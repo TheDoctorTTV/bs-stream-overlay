@@ -77,10 +77,12 @@
           <button type="button" data-position="top-right" aria-label="Top right" title="Top right" aria-pressed="false">
             <span class="corner corner--top-right"></span>
           </button>
-          <button type="button" data-position="bottom-left" aria-label="Bottom left" title="Bottom left" aria-pressed="false">
+          <button type="button" data-position="bottom-left" aria-label="Bottom left" title="Bottom left"
+            aria-pressed="false">
             <span class="corner corner--bottom-left"></span>
           </button>
-          <button type="button" data-position="bottom-right" aria-label="Bottom right" title="Bottom right" aria-pressed="false">
+          <button type="button" data-position="bottom-right" aria-label="Bottom right" title="Bottom right"
+            aria-pressed="false">
             <span class="corner corner--bottom-right"></span>
           </button>
         </div>
@@ -167,8 +169,8 @@
               <circle cx="11" cy="11" r="6.5"></circle>
               <path d="m16 16 4 4"></path>
             </svg>
-            <input type="search" id="font-search" placeholder="Search fonts" autocomplete="off"
-              role="combobox" aria-autocomplete="list" aria-controls="font-options" aria-expanded="false" />
+            <input type="search" id="font-search" placeholder="Search fonts" autocomplete="off" role="combobox"
+              aria-autocomplete="list" aria-controls="font-options" aria-expanded="false" />
           </label>
           <div class="font-options" id="font-options" role="listbox" aria-label="Available fonts" hidden></div>
           <p class="font-status" id="font-status" aria-live="polite">Click the search box to allow local font access.
@@ -304,7 +306,7 @@
       <section class="setting-section heart-rate-settings" aria-labelledby="heart-rate-heading">
         <div class="section-heading">
           <h2 id="heart-rate-heading">Heart rate</h2>
-          <p>Read the current BPM from HRCounter's local server.</p>
+          <p>Prefer HRCounter locally, with an optional cloud fallback.</p>
         </div>
 
         <label class="toggle-row">
@@ -326,8 +328,8 @@
                   <path d="M9 21V9"></path>
                 </svg>
               </button>
-              <button type="button" data-heart-rate-mode="standalone" aria-label="On its own"
-                title="On its own" aria-pressed="false">
+              <button type="button" data-heart-rate-mode="standalone" aria-label="On its own" title="On its own"
+                aria-pressed="false">
                 <svg class="lucide lucide-panel-top" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <rect width="18" height="18" x="3" y="3" rx="2"></rect>
@@ -340,16 +342,20 @@
           <div class="heart-rate-position" id="heart-rate-position-settings" hidden>
             <span class="field-label">Heart rate position</span>
             <div class="position-grid" role="group" aria-label="Heart rate overlay position">
-              <button type="button" data-heart-rate-position="top-left" aria-label="Top left" title="Top left" aria-pressed="false">
+              <button type="button" data-heart-rate-position="top-left" aria-label="Top left" title="Top left"
+                aria-pressed="false">
                 <span class="corner corner--top-left"></span>
               </button>
-              <button type="button" data-heart-rate-position="top-right" aria-label="Top right" title="Top right" aria-pressed="true">
+              <button type="button" data-heart-rate-position="top-right" aria-label="Top right" title="Top right"
+                aria-pressed="true">
                 <span class="corner corner--top-right"></span>
               </button>
-              <button type="button" data-heart-rate-position="bottom-left" aria-label="Bottom left" title="Bottom left" aria-pressed="false">
+              <button type="button" data-heart-rate-position="bottom-left" aria-label="Bottom left" title="Bottom left"
+                aria-pressed="false">
                 <span class="corner corner--bottom-left"></span>
               </button>
-              <button type="button" data-heart-rate-position="bottom-right" aria-label="Bottom right" title="Bottom right" aria-pressed="false">
+              <button type="button" data-heart-rate-position="bottom-right" aria-label="Bottom right"
+                title="Bottom right" aria-pressed="false">
                 <span class="corner corner--bottom-right"></span>
               </button>
             </div>
@@ -360,6 +366,34 @@
             <input class="port-input" type="number" id="heart-rate-port" min="1" max="65535" value="65302"
               inputmode="numeric" />
           </label>
+
+          <label class="type-control" for="heart-rate-fallback-provider">
+            <span><b>Fallback provider</b><small>Used when HRCounter has no BPM</small></span>
+            <select id="heart-rate-fallback-provider">
+              <option value="">Disabled</option>
+              <option value="pulsoid">Pulsoid</option>
+              <option value="hyperate">HypeRate</option>
+            </select>
+          </label>
+
+          <div class="heart-rate-provider-settings" id="pulsoid-settings" hidden>
+            <div class="provider-auth-row">
+              <span><b>Pulsoid account</b><small id="pulsoid-auth-status">Not connected</small></span>
+              <button class="provider-auth-button" type="button" id="pulsoid-connect">Connect Pulsoid</button>
+              <button class="provider-auth-button provider-auth-button--quiet" type="button" id="pulsoid-disconnect"
+                hidden>Disconnect</button>
+            </div>
+            <p>One-click account authorization. Pulsoid BRO plan is required.</p>
+          </div>
+
+          <div class="heart-rate-provider-settings" id="hyperate-settings" hidden>
+            <label for="hyperate-device-id">
+              <span><b>HypeRate ID</b><small>The ID at the end of your HypeRate URL</small></span>
+              <input class="credential-input" type="text" id="hyperate-device-id" autocomplete="off" spellcheck="false"
+                placeholder="For example, 122378" />
+            </label>
+            <p>Find it in your public URL, such as <code>app.hyperate.io/122378</code>.</p>
+          </div>
 
           <div class="heart-rate-connection" aria-live="polite">
             <span class="connection-dot" id="heart-rate-dot" data-state="offline"></span>
