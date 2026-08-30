@@ -304,7 +304,7 @@
       <section class="setting-section heart-rate-settings" aria-labelledby="heart-rate-heading">
         <div class="section-heading">
           <h2 id="heart-rate-heading">Heart rate</h2>
-          <p>Read the current BPM from HRCounter's local server.</p>
+          <p>Prefer HRCounter locally, with an optional cloud fallback.</p>
         </div>
 
         <label class="toggle-row">
@@ -360,6 +360,34 @@
             <input class="port-input" type="number" id="heart-rate-port" min="1" max="65535" value="65302"
               inputmode="numeric" />
           </label>
+
+          <label class="type-control" for="heart-rate-fallback-provider">
+            <span><b>Fallback provider</b><small>Used when HRCounter has no BPM</small></span>
+            <select id="heart-rate-fallback-provider">
+              <option value="">Disabled</option>
+              <option value="pulsoid">Pulsoid</option>
+              <option value="hyperate">HypeRate</option>
+            </select>
+          </label>
+
+          <div class="heart-rate-provider-settings" id="pulsoid-settings" hidden>
+            <div class="provider-auth-row">
+              <span><b>Pulsoid account</b><small id="pulsoid-auth-status">Not connected</small></span>
+              <button class="provider-auth-button" type="button" id="pulsoid-connect">Connect Pulsoid</button>
+              <button class="provider-auth-button provider-auth-button--quiet" type="button"
+                id="pulsoid-disconnect" hidden>Disconnect</button>
+            </div>
+            <p>One-click account authorization. Pulsoid BRO or lifetime access is required.</p>
+          </div>
+
+          <div class="heart-rate-provider-settings" id="hyperate-settings" hidden>
+            <label for="hyperate-device-id">
+              <span><b>HypeRate ID</b><small>The ID at the end of your HypeRate URL</small></span>
+              <input class="credential-input" type="text" id="hyperate-device-id" autocomplete="off"
+                spellcheck="false" placeholder="For example, 122378" />
+            </label>
+            <p>Find it in your public URL, such as <code>app.hyperate.io/122378</code>.</p>
+          </div>
 
           <div class="heart-rate-connection" aria-live="polite">
             <span class="connection-dot" id="heart-rate-dot" data-state="offline"></span>
