@@ -1158,7 +1158,7 @@ select {
 
 .copy-url-button.is-copied .copy-url-button__label {
   padding: 5px 12px;
-  background: #6bdd00;
+  background: #6600a9;
   border-radius: 100px;
   box-shadow: 0 3px 12px rgba(25, 48, 5, 0.35);
   opacity: 1;

@@ -6,7 +6,7 @@
 
 **Launch the overlay:** [https://bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net)
 
-BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), with paid Pulsoid or free HypeRate integration as a fallback, and appear with the song overlay or as a separately positioned element.
+BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), paid Pulsoid, or free HypeRate as its provider, and appear with the song overlay or as a separately positioned element.
 
 ## Preview
 
@@ -20,7 +20,7 @@ BS Stream Overlay is an open-source, customizable Beat Saber browser overlay pow
 
 ## Optional heart rate
 
-Heart-rate support is completely optional and is disabled by default. Enable **Show heart rate** in the settings panel to read live BPM data from [HRCounter](https://github.com/qe201020335/HRCounter). You can display it in either of two ways:
+Heart-rate support is completely optional and is disabled by default. Enable **Show heart rate** in the settings panel and choose [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid, or HypeRate as the provider. You can display it in either of two ways:
 
 - **With song overlay** attaches the heart icon and current heart rate to the main song and performance panel.
 - **On its own** separates the heart-rate readout from the song panel and lets you place it in the top-left, top-right, bottom-left, or bottom-right corner.
@@ -33,17 +33,16 @@ The heart icon pulses at the reported rate and changes color as your heart rate 
 - **151–179 BPM:** gradually changes from yellow to red
 - **180 BPM or higher:** red (`#ff4860`)
 
-To use this feature, install HRCounter, enable its HTTP server, and enter its port in the overlay settings. You can also select **Pulsoid** or **HypeRate** as a fallback.
+For **HRCounter**, install the mod, enable its HTTP server, and enter its port in the overlay settings. Alternatively, select **Pulsoid** or **HypeRate** as the primary provider.
 
-**Pulsoid** It uses one-click account authorization with the `data:heart_rate:read` scope, and the Pulsoid account connecting to the overlay must have BRO plan. Select **Pulsoid**, choose **Connect Pulsoid**, approve BS Overlay, and you will return to the settings page automatically.
+**Pulsoid** uses one-click account authorization with the `data:heart_rate:read` scope, and the Pulsoid account connecting to the overlay must have a BRO plan. Select **Pulsoid**, choose **Connect Pulsoid**, approve BS Overlay, and you will return to the settings page automatically.
 
-**HypeRate** It only requires the ID that you device will show.
+**HypeRate** only requires the ID shown by your device.
 
 ## Requirements
 
 - DataPuller or BS+ SO installed and enabled in Beat Saber
-- HRCounter installed and its HTTP server enabled (optional, for heart rate)
-- A Pulsoid BRO plan account or public HypeRate ID for the optional heart-rate fallback
+- HRCounter with its HTTP server enabled, a Pulsoid BRO plan account, or a public HypeRate ID (optional, for heart rate)
 - Streaming software that supports browser sources, such as OBS Studio, Streamlabs Desktop, Meld Studio, or similar software
 
 ## Font selection compatibility
@@ -56,7 +55,7 @@ Chromium-based browsers, such as Google Chrome, Microsoft Edge, Brave, or Opera/
 2. Start Beat Saber and make sure your selected data provider is running.
 3. Open [bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net).
 4. The overlay automatically uses the available provider. If both are detected, choose **DataPuller** or **BS+ SO** in the connection card, then configure the overlay position and information you want to display. Enabling only one provider is recommended for best performance.
-5. Optional: enable **Show heart rate**, choose **With song overlay** or **On its own**, configure HRCounter's port, and select either paid Pulsoid or free HypeRate as a cloud fallback if you want heart rate to continue in menus.
+5. Optional: enable **Show heart rate**, choose **With song overlay** or **On its own**, then select and configure HRCounter, paid Pulsoid, or free HypeRate as the provider.
 6. Select **Copy overlay URL** at the top of the page.
 7. Add a browser source in OBS, Streamlabs, Meld, or another supported streaming application.
 8. Paste the copied URL into the browser source.
