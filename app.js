@@ -10,7 +10,7 @@ const hyperateViewerToken = "bnQ1FoJmfiRprrSUJzrFxt8x8BbllHyqIWq4LsRjV7aCrLuLot6
 const isOverlayMode = params.get("overlay") === "1";
 const referenceCanvas = { width: 1920, height: 1080 };
 const dataSourceValues = ["datapuller", "bsplus"];
-const heartRateFallbackProviderValues = ["", "pulsoid", "hyperate"];
+const heartRateProviderValues = ["hrcounter", "pulsoid", "hyperate"];
 
 const defaultSettings = {
   dataSource: "datapuller",
@@ -31,7 +31,7 @@ const defaultSettings = {
     mode: "paired",
     position: "top-right",
     port: 65302,
-    fallbackProvider: "",
+    provider: "hrcounter",
     pulsoidToken: "",
     hyperateDeviceId: "",
   },
@@ -125,18 +125,16 @@ const state = {
   openSockets: 0,
   intentionalClosures: new WeakSet(),
   heartRate: null,
-  localHeartRate: null,
-  localHeartRateAt: 0,
-  fallbackHeartRate: null,
-  fallbackHeartRateAt: 0,
+  providerHeartRate: null,
+  providerHeartRateAt: 0,
   heartRateSource: "",
   heartRateTimer: null,
   heartRatePollingSignature: "",
-  heartRateFallbackSocket: null,
-  heartRateFallbackReconnectTimer: null,
-  heartRateFallbackHeartbeatTimer: null,
-  heartRateFallbackGeneration: 0,
-  heartRateFallbackReconnectAttempt: 0,
+  heartRateProviderSocket: null,
+  heartRateProviderReconnectTimer: null,
+  heartRateProviderHeartbeatTimer: null,
+  heartRateProviderGeneration: 0,
+  heartRateProviderReconnectAttempt: 0,
   fonts: [],
   fontsLoaded: false,
   fontsLoading: null,
@@ -203,7 +201,8 @@ const ui = {
   heartRateModeButtons: document.querySelectorAll("[data-heart-rate-mode]"),
   heartRatePositionSettings: $("heart-rate-position-settings"),
   heartRatePort: $("heart-rate-port"),
-  heartRateFallbackProvider: $("heart-rate-fallback-provider"),
+  heartRateProvider: $("heart-rate-provider"),
+  hrcounterSettings: $("hrcounter-settings"),
   pulsoidSettings: $("pulsoid-settings"),
   pulsoidAuthStatus: $("pulsoid-auth-status"),
   pulsoidConnect: $("pulsoid-connect"),
@@ -263,7 +262,7 @@ function loadSettings() {
       mode: normalizeHeartRateMode(saved?.heartRate?.mode),
       position: normalizePosition(saved?.heartRate?.position, defaultSettings.heartRate.position),
       port: normalizePort(saved?.heartRate?.port),
-      fallbackProvider: normalizeHeartRateFallbackProvider(saved?.heartRate?.fallbackProvider),
+      provider: normalizeHeartRateProvider(saved?.heartRate?.provider ?? saved?.heartRate?.fallbackProvider),
       pulsoidToken: normalizeCredential(saved?.heartRate?.pulsoidToken),
       hyperateDeviceId: normalizeCredential(saved?.heartRate?.hyperateDeviceId),
     },
@@ -325,16 +324,16 @@ function loadSettings() {
   const urlHeartRatePort = params.get("hrport");
   if (urlHeartRatePort !== null) settings.heartRate.port = normalizePort(urlHeartRatePort);
 
-  const urlHeartRateFallbackProvider = params.get("hrfallback");
-  if (urlHeartRateFallbackProvider !== null) {
-    settings.heartRate.fallbackProvider = normalizeHeartRateFallbackProvider(urlHeartRateFallbackProvider);
-  } else if (isOverlayMode) settings.heartRate.fallbackProvider = "";
+  const urlHeartRateProvider = params.get("hrprovider") ?? params.get("hrfallback");
+  if (urlHeartRateProvider !== null) {
+    settings.heartRate.provider = normalizeHeartRateProvider(urlHeartRateProvider);
+  } else if (isOverlayMode) settings.heartRate.provider = defaultSettings.heartRate.provider;
 
   const urlHypeRateDeviceId = params.get("hrdevice");
   if (urlHypeRateDeviceId !== null) settings.heartRate.hyperateDeviceId = normalizeCredential(urlHypeRateDeviceId);
 
   const urlHeartRateToken = secretParams.get("hrtoken");
-  if (urlHeartRateToken !== null && settings.heartRate.fallbackProvider === "pulsoid") {
+  if (urlHeartRateToken !== null && settings.heartRate.provider === "pulsoid") {
     settings.heartRate.pulsoidToken = normalizeCredential(urlHeartRateToken);
   }
 
@@ -380,7 +379,7 @@ function consumePulsoidOAuthResponse(settings) {
     pulsoidOAuthMessage = oauthParams.get("error_description") || "Pulsoid authorization was cancelled.";
   } else {
     settings.heartRate.enabled = true;
-    settings.heartRate.fallbackProvider = "pulsoid";
+    settings.heartRate.provider = "pulsoid";
     settings.heartRate.pulsoidToken = normalizeCredential(accessToken);
     pulsoidOAuthMessage = "Connected";
   }
@@ -499,8 +498,8 @@ function normalizeHeartRateMode(value) {
   return heartRateModeValues.includes(value) ? value : defaultSettings.heartRate.mode;
 }
 
-function normalizeHeartRateFallbackProvider(value) {
-  return heartRateFallbackProviderValues.includes(value) ? value : defaultSettings.heartRate.fallbackProvider;
+function normalizeHeartRateProvider(value) {
+  return heartRateProviderValues.includes(value) ? value : defaultSettings.heartRate.provider;
 }
 
 function normalizeCredential(value) {
@@ -548,16 +547,19 @@ function applySettingsToUrl(url) {
   } else url.searchParams.delete("shadowstrength");
   if (state.settings.heartRate.enabled) {
     url.searchParams.set("hr", state.settings.heartRate.mode);
-    url.searchParams.set("hrport", String(state.settings.heartRate.port));
+    if (state.settings.heartRate.provider === "hrcounter") {
+      url.searchParams.set("hrport", String(state.settings.heartRate.port));
+    } else url.searchParams.delete("hrport");
     if (state.settings.heartRate.mode === "standalone") {
       url.searchParams.set("hrposition", state.settings.heartRate.position);
     } else url.searchParams.delete("hrposition");
 
-    const fallbackProvider = state.settings.heartRate.fallbackProvider;
-    const pulsoidReady = fallbackProvider === "pulsoid" && state.settings.heartRate.pulsoidToken;
-    const hyperateReady = fallbackProvider === "hyperate" && state.settings.heartRate.hyperateDeviceId;
+    const provider = state.settings.heartRate.provider;
+    const pulsoidReady = provider === "pulsoid" && state.settings.heartRate.pulsoidToken;
+    const hyperateReady = provider === "hyperate" && state.settings.heartRate.hyperateDeviceId;
+    url.searchParams.set("hrprovider", provider);
+    url.searchParams.delete("hrfallback");
     if (pulsoidReady || hyperateReady) {
-      url.searchParams.set("hrfallback", fallbackProvider);
       if (hyperateReady) {
         url.searchParams.set("hrdevice", state.settings.heartRate.hyperateDeviceId);
       } else url.searchParams.delete("hrdevice");
@@ -566,7 +568,6 @@ function applySettingsToUrl(url) {
       else hashParams.delete("hrtoken");
       url.hash = hashParams.toString();
     } else {
-      url.searchParams.delete("hrfallback");
       url.searchParams.delete("hrdevice");
       const hashParams = new URLSearchParams(url.hash.slice(1));
       hashParams.delete("hrtoken");
@@ -576,6 +577,7 @@ function applySettingsToUrl(url) {
     url.searchParams.delete("hr");
     url.searchParams.delete("hrposition");
     url.searchParams.delete("hrport");
+    url.searchParams.delete("hrprovider");
     url.searchParams.delete("hrfallback");
     url.searchParams.delete("hrdevice");
     const hashParams = new URLSearchParams(url.hash.slice(1));
@@ -883,9 +885,10 @@ function renderSettings() {
   ui.heartRateEnabled.checked = state.settings.heartRate.enabled;
   ui.heartRateOptions.hidden = !state.settings.heartRate.enabled;
   ui.heartRatePort.value = String(state.settings.heartRate.port);
-  ui.heartRateFallbackProvider.value = state.settings.heartRate.fallbackProvider;
-  ui.pulsoidSettings.hidden = state.settings.heartRate.fallbackProvider !== "pulsoid";
-  ui.hyperateSettings.hidden = state.settings.heartRate.fallbackProvider !== "hyperate";
+  ui.heartRateProvider.value = state.settings.heartRate.provider;
+  ui.hrcounterSettings.hidden = state.settings.heartRate.provider !== "hrcounter";
+  ui.pulsoidSettings.hidden = state.settings.heartRate.provider !== "pulsoid";
+  ui.hyperateSettings.hidden = state.settings.heartRate.provider !== "hyperate";
   const pulsoidConnected = Boolean(state.settings.heartRate.pulsoidToken);
   ui.pulsoidAuthStatus.textContent = pulsoidOAuthMessage || (pulsoidConnected ? "Connected" : "Not connected");
   ui.pulsoidConnect.hidden = pulsoidConnected;
@@ -1174,13 +1177,13 @@ function renderHeartRate() {
 function stopHeartRatePolling() {
   clearTimeout(state.heartRateTimer);
   state.heartRateTimer = null;
-  clearTimeout(state.heartRateFallbackReconnectTimer);
-  state.heartRateFallbackReconnectTimer = null;
-  clearInterval(state.heartRateFallbackHeartbeatTimer);
-  state.heartRateFallbackHeartbeatTimer = null;
-  state.heartRateFallbackGeneration += 1;
-  if (state.heartRateFallbackSocket) state.heartRateFallbackSocket.close();
-  state.heartRateFallbackSocket = null;
+  clearTimeout(state.heartRateProviderReconnectTimer);
+  state.heartRateProviderReconnectTimer = null;
+  clearInterval(state.heartRateProviderHeartbeatTimer);
+  state.heartRateProviderHeartbeatTimer = null;
+  state.heartRateProviderGeneration += 1;
+  if (state.heartRateProviderSocket) state.heartRateProviderSocket.close();
+  state.heartRateProviderSocket = null;
 }
 
 function setHeartRateConnection(status, label) {
@@ -1188,37 +1191,34 @@ function setHeartRateConnection(status, label) {
   ui.heartRateStatus.textContent = label;
 }
 
-function getHeartRateFallbackLabel() {
-  return state.settings.heartRate.fallbackProvider === "pulsoid" ? "Pulsoid" : "HypeRate";
+function getHeartRateProviderLabel() {
+  const labels = { hrcounter: "HRCounter", pulsoid: "Pulsoid", hyperate: "HypeRate" };
+  return labels[state.settings.heartRate.provider];
 }
 
-function getHeartRateFallbackConfigurationError() {
+function getHeartRateProviderConfigurationError() {
   const settings = state.settings.heartRate;
-  if (settings.fallbackProvider === "pulsoid" && !settings.pulsoidToken) return "Connect your Pulsoid account";
-  if (settings.fallbackProvider === "hyperate" && !settings.hyperateDeviceId) return "Add a HypeRate device ID";
+  if (settings.provider === "pulsoid" && !settings.pulsoidToken) return "Connect your Pulsoid account";
+  if (settings.provider === "hyperate" && !settings.hyperateDeviceId) return "Add a HypeRate device ID";
   return "";
 }
 
 function refreshHeartRate() {
   const now = Date.now();
-  const localAvailable = Number(state.localHeartRate) > 0 && now - state.localHeartRateAt < 3500;
-  const fallbackAvailable = Number(state.fallbackHeartRate) > 0 && now - state.fallbackHeartRateAt < 30000;
+  const available = Number(state.providerHeartRate) > 0 &&
+    now - state.providerHeartRateAt < (state.settings.heartRate.provider === "hrcounter" ? 3500 : 30000);
 
-  if (localAvailable) {
-    state.heartRate = state.localHeartRate;
-    state.heartRateSource = "hrcounter";
-    setHeartRateConnection("live", `HRCounter connected · ${Math.round(state.heartRate)} BPM`);
-  } else if (fallbackAvailable) {
-    state.heartRate = state.fallbackHeartRate;
-    state.heartRateSource = state.settings.heartRate.fallbackProvider;
-    setHeartRateConnection("live", `${getHeartRateFallbackLabel()} fallback · ${Math.round(state.heartRate)} BPM`);
+  if (available) {
+    state.heartRate = state.providerHeartRate;
+    state.heartRateSource = state.settings.heartRate.provider;
+    setHeartRateConnection("live", `${getHeartRateProviderLabel()} connected · ${Math.round(state.heartRate)} BPM`);
   } else {
     state.heartRate = null;
     state.heartRateSource = "";
-    const configurationError = getHeartRateFallbackConfigurationError();
+    const configurationError = getHeartRateProviderConfigurationError();
     if (configurationError) setHeartRateConnection("offline", configurationError);
-    else if (state.settings.heartRate.fallbackProvider) {
-      setHeartRateConnection("connecting", `Waiting for ${getHeartRateFallbackLabel()} fallback`);
+    else if (state.settings.heartRate.provider !== "hrcounter") {
+      setHeartRateConnection("connecting", `Waiting for ${getHeartRateProviderLabel()}`);
     } else {
       setHeartRateConnection("offline", `No HRCounter data on ${heartRateHost}:${state.settings.heartRate.port}`);
     }
@@ -1227,40 +1227,45 @@ function refreshHeartRate() {
   renderHeartRate();
 }
 
-function scheduleHeartRateFallbackReconnect(generation) {
-  if (generation !== state.heartRateFallbackGeneration || !state.settings.heartRate.enabled) return;
-  const delay = Math.min(30000, 1000 * (2 ** state.heartRateFallbackReconnectAttempt));
-  state.heartRateFallbackReconnectAttempt = Math.min(5, state.heartRateFallbackReconnectAttempt + 1);
-  clearTimeout(state.heartRateFallbackReconnectTimer);
-  state.heartRateFallbackReconnectTimer = setTimeout(() => connectHeartRateFallback(generation), delay);
+function scheduleHeartRateProviderReconnect(generation) {
+  if (generation !== state.heartRateProviderGeneration || !state.settings.heartRate.enabled) return;
+  const delay = Math.min(30000, 1000 * (2 ** state.heartRateProviderReconnectAttempt));
+  state.heartRateProviderReconnectAttempt = Math.min(5, state.heartRateProviderReconnectAttempt + 1);
+  clearTimeout(state.heartRateProviderReconnectTimer);
+  state.heartRateProviderReconnectTimer = setTimeout(() => connectHeartRateProvider(generation), delay);
 }
 
-function receiveFallbackHeartRate(value) {
+function receiveProviderHeartRate(value) {
   const bpm = Math.round(Number(value));
   if (!Number.isFinite(bpm) || bpm <= 0 || bpm > 300) return;
-  state.fallbackHeartRate = bpm;
-  state.fallbackHeartRateAt = Date.now();
+  state.providerHeartRate = bpm;
+  state.providerHeartRateAt = Date.now();
+  const generation = state.heartRateProviderGeneration;
+  clearTimeout(state.heartRateTimer);
+  state.heartRateTimer = setTimeout(() => {
+    if (generation === state.heartRateProviderGeneration) refreshHeartRate();
+  }, 30100);
   refreshHeartRate();
 }
 
-function connectHeartRateFallback(generation) {
-  if (generation !== state.heartRateFallbackGeneration) return;
+function connectHeartRateProvider(generation) {
+  if (generation !== state.heartRateProviderGeneration) return;
   const settings = state.settings.heartRate;
-  if (!settings.fallbackProvider || getHeartRateFallbackConfigurationError()) {
+  if (settings.provider === "hrcounter" || getHeartRateProviderConfigurationError()) {
     refreshHeartRate();
     return;
   }
 
-  const isPulsoid = settings.fallbackProvider === "pulsoid";
+  const isPulsoid = settings.provider === "pulsoid";
   const socketUrl = isPulsoid
     ? `wss://dev.pulsoid.net/api/v1/data/real_time?access_token=${encodeURIComponent(settings.pulsoidToken)}`
     : `wss://app.hyperate.io/socket/websocket?token=${hyperateViewerToken}`;
   const socket = new WebSocket(socketUrl);
-  state.heartRateFallbackSocket = socket;
+  state.heartRateProviderSocket = socket;
 
   socket.addEventListener("open", () => {
-    if (generation !== state.heartRateFallbackGeneration) return socket.close();
-    state.heartRateFallbackReconnectAttempt = 0;
+    if (generation !== state.heartRateProviderGeneration) return socket.close();
+    state.heartRateProviderReconnectAttempt = 0;
     if (!isPulsoid) {
       socket.send(JSON.stringify({
         topic: `hr:${settings.hyperateDeviceId}`,
@@ -1268,8 +1273,8 @@ function connectHeartRateFallback(generation) {
         payload: {},
         ref: "1",
       }));
-      clearInterval(state.heartRateFallbackHeartbeatTimer);
-      state.heartRateFallbackHeartbeatTimer = setInterval(() => {
+      clearInterval(state.heartRateProviderHeartbeatTimer);
+      state.heartRateProviderHeartbeatTimer = setInterval(() => {
         if (socket.readyState !== WebSocket.OPEN) return;
         socket.send(JSON.stringify({ topic: "phoenix", event: "heartbeat", payload: {}, ref: "0" }));
       }, 10000);
@@ -1277,22 +1282,22 @@ function connectHeartRateFallback(generation) {
   });
 
   socket.addEventListener("message", ({ data }) => {
-    if (generation !== state.heartRateFallbackGeneration) return;
+    if (generation !== state.heartRateProviderGeneration) return;
     try {
       const message = JSON.parse(data);
-      if (isPulsoid) receiveFallbackHeartRate(message?.data?.heart_rate);
-      else if (message?.event === "hr_update") receiveFallbackHeartRate(message?.payload?.hr);
+      if (isPulsoid) receiveProviderHeartRate(message?.data?.heart_rate);
+      else if (message?.event === "hr_update") receiveProviderHeartRate(message?.payload?.hr);
     } catch (error) {
-      console.warn(`Ignored invalid ${getHeartRateFallbackLabel()} heart-rate message`, error);
+      console.warn(`Ignored invalid ${getHeartRateProviderLabel()} heart-rate message`, error);
     }
   });
 
   socket.addEventListener("close", () => {
-    if (generation !== state.heartRateFallbackGeneration) return;
-    clearInterval(state.heartRateFallbackHeartbeatTimer);
-    state.heartRateFallbackHeartbeatTimer = null;
-    state.heartRateFallbackSocket = null;
-    scheduleHeartRateFallbackReconnect(generation);
+    if (generation !== state.heartRateProviderGeneration) return;
+    clearInterval(state.heartRateProviderHeartbeatTimer);
+    state.heartRateProviderHeartbeatTimer = null;
+    state.heartRateProviderSocket = null;
+    scheduleHeartRateProviderReconnect(generation);
   });
   socket.addEventListener("error", () => socket.close());
 }
@@ -1300,7 +1305,7 @@ function connectHeartRateFallback(generation) {
 function syncHeartRatePolling() {
   const settings = state.settings.heartRate;
   const signature = settings.enabled
-    ? [heartRateHost, settings.port, settings.fallbackProvider, settings.pulsoidToken,
+    ? [heartRateHost, settings.port, settings.provider, settings.pulsoidToken,
       settings.hyperateDeviceId].join(":")
     : "";
   if (signature === state.heartRatePollingSignature) return;
@@ -1308,10 +1313,8 @@ function syncHeartRatePolling() {
   stopHeartRatePolling();
   state.heartRatePollingSignature = signature;
   state.heartRate = null;
-  state.localHeartRate = null;
-  state.localHeartRateAt = 0;
-  state.fallbackHeartRate = null;
-  state.fallbackHeartRateAt = 0;
+  state.providerHeartRate = null;
+  state.providerHeartRateAt = 0;
   state.heartRateSource = "";
   renderHeartRate();
 
@@ -1320,9 +1323,13 @@ function syncHeartRatePolling() {
     return;
   }
 
-  const fallbackGeneration = state.heartRateFallbackGeneration;
-  state.heartRateFallbackReconnectAttempt = 0;
-  connectHeartRateFallback(fallbackGeneration);
+  if (settings.provider !== "hrcounter") {
+    setHeartRateConnection("connecting", `Connecting to ${getHeartRateProviderLabel()}`);
+    const providerGeneration = state.heartRateProviderGeneration;
+    state.heartRateProviderReconnectAttempt = 0;
+    connectHeartRateProvider(providerGeneration);
+    return;
+  }
 
   const poll = async () => {
     if (state.heartRatePollingSignature !== signature) return;
@@ -1337,11 +1344,11 @@ function syncHeartRatePolling() {
       if (!response.ok) throw new Error(`HRCounter returned ${response.status}`);
       const bpm = Math.round(Number((await response.text()).trim()));
       if (!Number.isFinite(bpm) || bpm <= 0 || bpm > 300) throw new Error("HRCounter returned no heart rate");
-      state.localHeartRate = bpm;
-      state.localHeartRateAt = Date.now();
+      state.providerHeartRate = bpm;
+      state.providerHeartRateAt = Date.now();
     } catch {
-      state.localHeartRate = null;
-      state.localHeartRateAt = 0;
+      state.providerHeartRate = null;
+      state.providerHeartRateAt = 0;
     } finally {
       clearTimeout(timeout);
       refreshHeartRate();
@@ -1731,8 +1738,8 @@ ui.heartRatePort.addEventListener("change", () => {
   renderSettings();
 });
 
-ui.heartRateFallbackProvider.addEventListener("change", () => {
-  state.settings.heartRate.fallbackProvider = normalizeHeartRateFallbackProvider(ui.heartRateFallbackProvider.value);
+ui.heartRateProvider.addEventListener("change", () => {
+  state.settings.heartRate.provider = normalizeHeartRateProvider(ui.heartRateProvider.value);
   saveSettings();
   renderSettings();
 });
@@ -1750,7 +1757,7 @@ ui.pulsoidConnect.addEventListener("click", () => {
   }
 
   state.settings.heartRate.enabled = true;
-  state.settings.heartRate.fallbackProvider = "pulsoid";
+  state.settings.heartRate.provider = "pulsoid";
   pulsoidOAuthMessage = "";
   saveSettings();
   const authorizationUrl = new URL("https://pulsoid.net/oauth2/authorize");
@@ -1909,7 +1916,8 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     const loadedHeartRateMode = loadedUrl.searchParams.get("hr");
     const loadedHeartRatePosition = loadedUrl.searchParams.get("hrposition");
     const loadedHeartRatePort = loadedUrl.searchParams.get("hrport");
-    const loadedHeartRateFallbackProvider = loadedUrl.searchParams.get("hrfallback");
+    const loadedHeartRateProvider = loadedUrl.searchParams.get("hrprovider") ??
+      loadedUrl.searchParams.get("hrfallback");
     const loadedHypeRateDeviceId = loadedUrl.searchParams.get("hrdevice");
     const loadedSecretParams = new URLSearchParams(loadedUrl.hash.slice(1));
     const loadedHeartRateToken = loadedSecretParams.get("hrtoken");
@@ -1923,7 +1931,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
       loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
       loadedHeartRateMode === null &&
       loadedHeartRatePosition === null && loadedHeartRatePort === null &&
-      loadedHeartRateFallbackProvider === null && loadedHypeRateDeviceId === null && loadedHeartRateToken === null) {
+      loadedHeartRateProvider === null && loadedHypeRateDeviceId === null && loadedHeartRateToken === null) {
       throw new Error("That URL does not contain overlay settings.");
     }
 
@@ -1935,9 +1943,11 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
       throw new Error("That URL contains an unsupported heart rate position.");
     }
 
-    if (loadedHeartRateFallbackProvider !== null &&
-      !heartRateFallbackProviderValues.includes(loadedHeartRateFallbackProvider)) {
-      throw new Error("That URL contains an unsupported heart rate fallback provider.");
+    const legacyDisabledHeartRateFallback = !loadedUrl.searchParams.has("hrprovider") &&
+      loadedUrl.searchParams.has("hrfallback") && loadedHeartRateProvider === "";
+    if (loadedHeartRateProvider !== null && !legacyDisabledHeartRateFallback &&
+      !heartRateProviderValues.includes(loadedHeartRateProvider)) {
+      throw new Error("That URL contains an unsupported heart rate provider.");
     }
 
     if (loadedDataSource !== null && !dataSourceValues.includes(loadedDataSource)) {
@@ -1964,14 +1974,14 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     }
     if (loadedHeartRatePosition !== null) nextSettings.heartRate.position = loadedHeartRatePosition;
     if (loadedHeartRatePort !== null) nextSettings.heartRate.port = normalizePort(loadedHeartRatePort);
-    if (loadedHeartRateFallbackProvider !== null) {
-      nextSettings.heartRate.fallbackProvider = normalizeHeartRateFallbackProvider(loadedHeartRateFallbackProvider);
+    if (loadedHeartRateProvider !== null) {
+      nextSettings.heartRate.provider = normalizeHeartRateProvider(loadedHeartRateProvider);
     }
     if (loadedHypeRateDeviceId !== null) {
       nextSettings.heartRate.hyperateDeviceId = normalizeCredential(loadedHypeRateDeviceId);
     }
     if (loadedHeartRateToken !== null) {
-      if (nextSettings.heartRate.fallbackProvider === "pulsoid") {
+      if (nextSettings.heartRate.provider === "pulsoid") {
         nextSettings.heartRate.pulsoidToken = normalizeCredential(loadedHeartRateToken);
       }
     }
