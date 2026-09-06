@@ -6,7 +6,7 @@
 
 **Launch the overlay:** [https://bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net)
 
-BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. An optional heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), paid Pulsoid, or free HypeRate as its provider, and appear with the song overlay or as a separately positioned element.
+BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. A heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid BRO plan, or free HypeRate as its provider, and appear with the song overlay or as a separately positioned element.
 
 ## Preview
 
@@ -14,13 +14,13 @@ BS Stream Overlay is an open-source, customizable Beat Saber browser overlay pow
 
 ![BS Stream Overlay showing song details, score, combo, rank, accuracy, and health](docs/images/song-overlay.png)
 
-### Optional standalone heart rate
+### With heart rate
 
-![BS Stream Overlay with a standalone heart-rate readout in the top-right corner](docs/images/standalone-heart-rate.png)
+![BS Stream Overlay with a heart-rate readout](docs/images/standalone-heart-rate.png)
 
-## Optional heart rate
+## Heart Rate
 
-Heart-rate support is completely optional and is disabled by default. Enable **Show heart rate** in the settings panel and choose [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid, or HypeRate as the provider. You can display it in either of two ways:
+Enable **Show heart rate** in the settings panel and choose [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid, or HypeRate as the provider. You can display it in either of two ways:
 
 - **With song overlay** attaches the heart icon and current heart rate to the main song and performance panel.
 - **On its own** separates the heart-rate readout from the song panel and lets you place it in the top-left, top-right, bottom-left, or bottom-right corner.
@@ -42,7 +42,7 @@ For **HRCounter**, install the mod, enable its HTTP server, and enter its port i
 ## Requirements
 
 - DataPuller or BS+ SO installed and enabled in Beat Saber
-- HRCounter with its HTTP server enabled, a Pulsoid BRO plan account, or a public HypeRate ID (optional, for heart rate)
+- HRCounter with its HTTP server enabled, a Pulsoid BRO plan account, or a public HypeRate ID
 - Streaming software that supports browser sources, such as OBS Studio, Streamlabs Desktop, Meld Studio, or similar software
 
 ## Font selection compatibility
@@ -55,7 +55,7 @@ Chromium-based browsers, such as Google Chrome, Microsoft Edge, Brave, or Opera/
 2. Start Beat Saber and make sure your selected data provider is running.
 3. Open [bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net).
 4. The overlay automatically uses the available provider. If both are detected, choose **DataPuller** or **BS+ SO** in the connection card, then configure the overlay position and information you want to display. Enabling only one provider is recommended for best performance.
-5. Optional: enable **Show heart rate**, choose **With song overlay** or **On its own**, then select and configure HRCounter, paid Pulsoid, or free HypeRate as the provider.
+5. Enable **Show heart rate**, choose **With song overlay** or **On its own**, then select and configure HRCounter, paid Pulsoid, or free HypeRate as the provider.
 6. Select **Copy overlay URL** at the top of the page.
 7. Add a browser source in OBS, Streamlabs, Meld, or another supported streaming application.
 8. Paste the copied URL into the browser source.
