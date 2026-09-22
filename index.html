@@ -4,14 +4,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="color-scheme" content="dark" />
-  <meta name="theme-color" content="#0c0e11" />
+  <meta name="theme-color" content="#1b1b1b" />
   <meta http-equiv="Content-Security-Policy"
     content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src ws: wss: http: https:" />
   <title>Beat Saber Overlay Settings</title>
+  <script src="theme.js"></script>
   <link rel="icon" href="assets/icons/favicon.ico" sizes="any" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Kodchasan:wght@400;500;600;700&amp;display=swap"
+    rel="stylesheet" />
   <link
     href="https://fonts.googleapis.com/css2?family=Anton&amp;family=Archivo&amp;family=Archivo+Black&amp;family=Audiowide&amp;family=Bangers&amp;family=Barlow&amp;family=Barlow+Condensed&amp;family=Bebas+Neue&amp;family=Black+Ops+One&amp;family=Bungee&amp;family=Chakra+Petch&amp;family=Cinzel&amp;family=Comfortaa&amp;family=DM+Sans&amp;family=Dosis&amp;family=Exo+2&amp;family=Fira+Sans&amp;family=Fjalla+One&amp;family=Fredoka&amp;family=Hind&amp;family=IBM+Plex+Sans&amp;family=Josefin+Sans&amp;family=Kanit&amp;family=Karla&amp;family=Lato&amp;family=Lexend&amp;family=Lilita+One&amp;family=Manrope&amp;family=Merriweather+Sans&amp;family=Montserrat&amp;family=Nunito&amp;family=Orbitron&amp;family=Oswald&amp;family=Oxanium&amp;family=Poppins&amp;family=Prompt&amp;family=Quicksand&amp;family=Rajdhani&amp;family=Raleway&amp;family=Roboto&amp;family=Roboto+Condensed&amp;family=Roboto+Mono&amp;family=Rowdies&amp;family=Rubik&amp;family=Russo+One&amp;family=Saira&amp;family=Saira+Condensed&amp;family=Space+Grotesk&amp;family=Teko&amp;family=Titillium+Web&amp;display=swap"
     rel="stylesheet" />
@@ -39,14 +41,14 @@
 
     <aside class="settings-panel" aria-label="Overlay settings">
 
-      <a class="repository-link" href="https://github.com/TheDoctorTTV/bs-stream-overlay" target="_blank"
-        rel="noopener noreferrer">
+      <button class="about-button" type="button" id="open-about" aria-haspopup="dialog" aria-controls="about-dialog">
         <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path
-            d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.87c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.58 9.58 0 0 1 12 6.82c.85 0 1.71.12 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.77c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+          <circle cx="12" cy="12" r="9"></circle>
+          <path d="M12 10.5v6"></path>
+          <circle cx="12" cy="7.5" r=".75" class="about-button__dot"></circle>
         </svg>
-        <span>TheDoctorTTV/bs-stream-overlay</span>
-      </a>
+        <span>About BS Overlay</span>
+      </button>
 
       <div class="connection-card">
         <span class="connection-dot" id="connection-dot"></span>
@@ -509,6 +511,52 @@
         <button class="toolbar-button toolbar-button--primary" type="submit">Load settings</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog class="settings-dialog about-dialog" id="about-dialog" aria-labelledby="about-heading"
+    aria-describedby="about-description">
+    <div class="settings-dialog__card about-dialog__card">
+      <button class="dialog-close-button" type="button" id="close-about" aria-label="Close About dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="m7 7 10 10M17 7 7 17"></path>
+        </svg>
+      </button>
+      <span class="toolbar-eyebrow">About</span>
+      <h2 id="about-heading">Beat Saber Overlay</h2>
+      <p id="about-description">A customizable browser-source overlay for Beat Saber streams.</p>
+      <dl class="about-details">
+        <div>
+          <dt>Creator</dt>
+          <dd>TheDoctorTTV</dd>
+        </div>
+        <div>
+          <dt>GitHub</dt>
+          <dd>
+            <a href="https://github.com/TheDoctorTTV/bs-stream-overlay" target="_blank" rel="noopener noreferrer">
+              TheDoctorTTV/bs-stream-overlay
+              <span aria-hidden="true">↗</span>
+            </a>
+          </dd>
+        </div>
+        <div>
+          <dt>Website</dt>
+          <dd>
+            <a href="https://thetimevortex.net" target="_blank" rel="noopener noreferrer">
+              thetimevortex.net
+              <span aria-hidden="true">↗</span>
+            </a>
+          </dd>
+        </div>
+      </dl>
+      <div class="about-theme">
+        <span class="about-theme__label">Appearance</span>
+        <div class="about-theme__options" role="group" aria-label="Appearance">
+          <button type="button" data-theme-choice="system" aria-pressed="false">System</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">Light</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">Dark</button>
+        </div>
+      </div>
+    </div>
   </dialog>
 
   <script src="app.js"></script>
