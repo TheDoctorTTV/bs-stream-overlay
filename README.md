@@ -65,4 +65,4 @@ Your selected settings are stored in the generated URL, so the browser source wi
 DataPuller exposes some fields that BS+ SO does not, including NJS and (depending on the map) a BSR key. Unavailable values are shown as a dash or hidden when using BS+.
 
 # Disclaimer
-This project was made with the assitance of AI.
+This project was made with the assistance of AI.
