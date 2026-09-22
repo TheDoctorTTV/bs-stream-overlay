@@ -63,3 +63,6 @@ Chromium-based browsers, such as Google Chrome, Microsoft Edge, Brave, or Opera/
 Your selected settings are stored in the generated URL, so the browser source will use the same layout, scale, one-color or two-color accent, corner shadow, and visible fields. Two-color accents render as a horizontal gradient from color 1 on the left to color 2 on the right. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
 
 DataPuller exposes some fields that BS+ SO does not, including NJS and (depending on the map) a BSR key. Unavailable values are shown as a dash or hidden when using BS+.
+
+# Disclaimer
+This project was made with the assitance of AI.
