@@ -163,6 +163,9 @@ const ui = {
   loadSettingsUrl: $("load-settings-url"),
   loadSettingsError: $("load-settings-error"),
   cancelLoadSettings: $("cancel-load-settings"),
+  openAbout: $("open-about"),
+  aboutDialog: $("about-dialog"),
+  closeAbout: $("close-about"),
   connectionDot: $("connection-dot"),
   connectionLabel: $("connection-label"),
   connectionDetail: $("connection-detail"),
@@ -1146,7 +1149,6 @@ function renderLive() {
   ui.health.textContent = formatNumber(health);
   ui.healthFill.style.width = `${health}%`;
   ui.healthFill.style.setProperty("--health-color", `rgb(${red} ${green} ${blue})`);
-  ui.healthFill.style.setProperty("--health-glow", `rgb(${red} ${green} ${blue} / 0.52)`);
 }
 
 function renderHeartRate() {
@@ -1169,7 +1171,6 @@ function renderHeartRate() {
   [ui.heartRatePaired, ui.heartRateStandalone].forEach((element) => {
     element.classList.toggle("is-unavailable", !available);
     element.style.setProperty("--heart-rate-color", `rgb(${red} ${green} ${blue})`);
-    element.style.setProperty("--heart-rate-glow", `rgb(${red} ${green} ${blue} / 0.48)`);
     element.style.setProperty("--heart-rate-duration", `${pulseDuration.toFixed(3)}s`);
   });
 }
@@ -1894,6 +1895,18 @@ ui.loadSettingsButton.addEventListener("click", () => {
 
 ui.cancelLoadSettings.addEventListener("click", () => {
   ui.loadSettingsDialog.close();
+});
+
+ui.openAbout.addEventListener("click", () => {
+  ui.aboutDialog.showModal();
+});
+
+ui.closeAbout.addEventListener("click", () => {
+  ui.aboutDialog.close();
+});
+
+ui.aboutDialog.addEventListener("click", (event) => {
+  if (event.target === ui.aboutDialog) ui.aboutDialog.close();
 });
 
 ui.loadSettingsForm.addEventListener("submit", (event) => {
