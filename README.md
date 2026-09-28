@@ -6,7 +6,7 @@
 
 **Launch the overlay:** [https://bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net)
 
-BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. A heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid BRO plan, or free HypeRate as its provider, and appear with the song overlay or as a separately positioned element.
+BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. Optional gameplay indicators show when a song is paused or No Fail has triggered, and rank letters can use the UITweaks color palette. A heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid BRO plan, or free HypeRate as its provider, and appear with the song overlay or as a separately positioned element.
 
 ## Preview
 

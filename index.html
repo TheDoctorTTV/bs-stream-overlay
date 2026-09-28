@@ -305,6 +305,31 @@
         </div>
       </section>
 
+      <section class="setting-section" aria-labelledby="gameplay-heading">
+        <div class="section-heading">
+          <h2 id="gameplay-heading">Gameplay indicators</h2>
+          <p>Highlight pauses, No Fail triggers, and current rank.</p>
+        </div>
+
+        <div class="toggle-list">
+          <label class="toggle-row">
+            <span><b>Paused indicator</b><small>Show when an active song stops progressing</small></span>
+            <input type="checkbox" id="show-paused" />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>No Fail indicator</b><small>Keep the overlay visible and mark the cover after failing</small></span>
+            <input type="checkbox" id="show-no-fail" />
+            <i aria-hidden="true"></i>
+          </label>
+          <label class="toggle-row">
+            <span><b>Colored ranks</b><small>Use the UITweaks rank color palette</small></span>
+            <input type="checkbox" id="rank-colors" />
+            <i aria-hidden="true"></i>
+          </label>
+        </div>
+      </section>
+
       <section class="setting-section heart-rate-settings" aria-labelledby="heart-rate-heading">
         <div class="section-heading">
           <h2 id="heart-rate-heading">Heart rate</h2>
@@ -421,6 +446,13 @@
                 <circle class="cover-progress__track" cx="50" cy="50" r="46"></circle>
                 <circle class="cover-progress__value" id="cover-progress" cx="50" cy="50" r="46"></circle>
               </svg>
+              <span class="cover-pause" id="paused-indicator" aria-label="Paused" hidden>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="6" y="4" width="4" height="16" rx="1"></rect>
+                  <rect x="14" y="4" width="4" height="16" rx="1"></rect>
+                </svg>
+              </span>
+              <span class="cover-no-fail" id="no-fail-indicator" aria-label="No Fail triggered" hidden>NF</span>
             </div>
 
             <div class="song-copy">
