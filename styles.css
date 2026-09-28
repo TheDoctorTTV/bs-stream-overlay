@@ -2202,7 +2202,11 @@ html[data-theme="light"] .toolbar-button:not(.toolbar-button--primary) {
   color: var(--text);
 }
 
-html[data-theme="light"] .copy-url-button:hover,
+html[data-theme="light"] .copy-url-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--line);
+}
+
 html[data-theme="light"] .toolbar-button:not(.toolbar-button--primary) {
   background: var(--panel-soft);
   border-color: var(--line);
