@@ -579,7 +579,7 @@ function applySettingsToUrl(url) {
   } else url.searchParams.delete("shadowstrength");
   if (state.settings.gameplay.showPaused) url.searchParams.set("paused", "1");
   else url.searchParams.delete("paused");
-  if (state.settings.gameplay.showNoFail) url.searchParams.set("nofail", "1");
+  if (state.settings.dataSource === "datapuller" && state.settings.gameplay.showNoFail) url.searchParams.set("nofail", "1");
   else url.searchParams.delete("nofail");
   if (state.settings.gameplay.rankColors) url.searchParams.set("rankcolors", "1");
   else url.searchParams.delete("rankcolors");
@@ -858,7 +858,8 @@ function observePlaybackProgress(elapsed) {
 }
 
 function isNoFailTriggered() {
-  return Boolean(state.map?.LevelFailed && state.map?.Modifiers?.NoFailOn0Energy);
+  return state.settings.dataSource === "datapuller" &&
+    Boolean(state.map?.LevelFailed && state.map?.Modifiers?.NoFailOn0Energy);
 }
 
 function isLevelActive() {
@@ -990,7 +991,11 @@ function renderSettings() {
   ui.shadowStrength.value = String(state.settings.shadow.strength);
   ui.shadowStrengthValue.value = `${state.settings.shadow.strength}%`;
   ui.showPaused.checked = state.settings.gameplay.showPaused;
-  ui.showNoFail.checked = state.settings.gameplay.showNoFail;
+  ui.showNoFail.disabled = state.settings.dataSource !== "datapuller";
+  ui.showNoFail.checked = !ui.showNoFail.disabled && state.settings.gameplay.showNoFail;
+  $("show-no-fail-description").textContent = ui.showNoFail.disabled
+    ? "Unavailable for BS+ SO: No Fail trigger data is not provided"
+    : "Keep the overlay visible and mark the cover after failing";
   ui.rankColors.checked = state.settings.gameplay.rankColors;
   ui.heartRateEnabled.checked = state.settings.heartRate.enabled;
   ui.heartRateOptions.hidden = !state.settings.heartRate.enabled;
