@@ -6,7 +6,7 @@
 
 **Launch the overlay:** [https://bs-overlay.thetimevortex.net](https://bs-overlay.thetimevortex.net)
 
-BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. A heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid BRO plan, or free HypeRate as its provider, and appear with the song overlay or as a separately positioned element.
+BS Stream Overlay is an open-source, customizable Beat Saber browser overlay powered by [DataPuller](https://github.com/WentTheFox/BSDataPuller) or [Beat Saber Plus](https://github.com/hardcpp/BeatSaberPlus)'s Song Overlay module (BS+ SO). It can display live song and performance information, including cover art, song title, difficulty, BPM, NJS, BSR code, score, combo, rank, accuracy, misses, and health. Optional gameplay indicators show when a song is paused or No Fail has triggered, and rank letters can use the UITweaks color palette. A heart-rate readout can use [HRCounter](https://github.com/qe201020335/HRCounter), Pulsoid BRO plan, or free HypeRate as its provider, and appear with the song overlay or as a separately positioned element.
 
 ## Preview
 
@@ -17,6 +17,20 @@ BS Stream Overlay is an open-source, customizable Beat Saber browser overlay pow
 ### With heart rate
 
 ![BS Stream Overlay with a heart-rate readout](docs/images/standalone-heart-rate.png)
+
+## Gameplay indicators
+
+The **Gameplay indicators** section offers three optional settings, all off by default:
+
+- **Paused indicator:** displays a pause icon over the cover art in place of the elapsed-time label while a song is paused. Supports DataPuller and BS+ SO. With DataPuller, it also detects when playback stops advancing for 2.5 seconds after the song has started progressing, while both telemetry connections are active.
+- **No Fail indicator:** keeps the overlay visible after failing with the No Fail modifier enabled and adds a red **NF** ribbon to the cover. The overlay still hides when the song finishes or is quit. This option is **DataPuller only**; it is disabled for BS+ SO because that source does not provide the required No Fail trigger data. Switching back to DataPuller restores your saved preference.
+- **Colored ranks:** colors the rank letter using the UITweaks palette: **SSS/SS** cyan, **S** green, **A** yellow, **B** orange, **C** orange-red, and **D/E** red. Supports both data sources.
+
+The pause icon and NF ribbon require cover art to be enabled. These settings are saved locally and included in copied overlay URLs as `paused=1`, `nofail=1`, and `rankcolors=1`, respectively. **Load settings** restores them from an existing URL. Generated BS+ SO URLs omit `nofail=1`, and that parameter has no effect while using BS+ SO.
+
+### Visual refinements
+
+Cover images and their shading follow the cover's rounded corners. In light mode, hovering over the URL box uses a translucent highlight that preserves the header's accent gradient instead of covering it with solid gray.
 
 ## Heart Rate
 
@@ -60,7 +74,7 @@ Chromium-based browsers, such as Google Chrome, Microsoft Edge, Brave, or Opera/
 7. Add a browser source in OBS, Streamlabs, Meld, or another supported streaming application.
 8. Paste the copied URL into the browser source.
 
-Your selected settings are stored in the generated URL, so the browser source will use the same layout, scale, one-color or two-color accent, corner shadow, and visible fields. Two-color accents render as a horizontal gradient from color 1 on the left to color 2 on the right. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
+Your selected settings are stored in the generated URL, so the browser source will use the same layout, scale, one-color or two-color accent, corner shadow, gameplay indicators, and visible fields. Two-color accents render as a horizontal gradient from color 1 on the left to color 2 on the right. To edit an existing overlay, select **Load settings** on the settings page and paste its URL.
 
 DataPuller exposes some fields that BS+ SO does not, including NJS and (depending on the map) a BSR key. Unavailable values are shown as a dash or hidden when using BS+.
 

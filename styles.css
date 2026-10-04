@@ -114,9 +114,9 @@ select {
 .brand-mark {
   display: block;
   flex: 0 0 auto;
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
   border-radius: 10px;
 }
 
@@ -1625,6 +1625,7 @@ select {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: inherit;
 }
 
 .cover-art.has-image img {
@@ -1652,6 +1653,7 @@ select {
   inset: 0;
   content: "";
   background: rgba(0, 0, 0, 0.16);
+  border-radius: inherit;
   pointer-events: none;
 }
 
@@ -1694,6 +1696,57 @@ select {
   stroke-dasharray: 289;
   stroke-dashoffset: 289;
   transition: stroke-dashoffset 500ms linear;
+}
+
+.cover-pause {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.cover-pause[hidden],
+.cover-no-fail[hidden] {
+  display: none;
+}
+
+.cover-pause svg {
+  width: 42px;
+  height: 42px;
+  padding: 9px;
+  fill: white;
+  background: rgba(0, 0, 0, 0.58);
+  border-radius: 50%;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.75));
+}
+
+.overlay-preview.is-paused .cover-time {
+  opacity: 0;
+}
+
+.cover-no-fail {
+  position: absolute;
+  z-index: 5;
+  top: 8px;
+  left: -31px;
+  display: grid;
+  place-items: center;
+  width: 112px;
+  height: 34px;
+  overflow: hidden;
+  background: #ff344c;
+  color: white;
+  border-radius: 3px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.42);
+  font-size: calc(0.72rem * var(--overlay-text-scale, 1));
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase !important;
+  transform: rotate(-45deg);
+  pointer-events: none;
 }
 
 .song-copy {
@@ -1787,6 +1840,10 @@ select {
   color: var(--overlay-accent-text, white);
   border-radius: 999px;
   box-shadow: 0 5px 14px rgba(20, 20, 20, 0.2);
+}
+
+#rank {
+  transition: color 180ms ease;
 }
 
 .bsr-code,
@@ -2145,7 +2202,11 @@ html[data-theme="light"] .toolbar-button:not(.toolbar-button--primary) {
   color: var(--text);
 }
 
-html[data-theme="light"] .copy-url-button:hover,
+html[data-theme="light"] .copy-url-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--line);
+}
+
 html[data-theme="light"] .toolbar-button:not(.toolbar-button--primary) {
   background: var(--panel-soft);
   border-color: var(--line);

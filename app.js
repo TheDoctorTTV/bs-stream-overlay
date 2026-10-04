@@ -26,6 +26,11 @@ const defaultSettings = {
     enabled: true,
     strength: 100,
   },
+  gameplay: {
+    showPaused: false,
+    showNoFail: false,
+    rankColors: false,
+  },
   heartRate: {
     enabled: false,
     mode: "paired",
@@ -142,6 +147,11 @@ const state = {
   activeFontIndex: -1,
   beatSaberPlusClock: null,
   telemetryClockTimer: null,
+  playbackStatusTimer: null,
+  playbackLastElapsed: null,
+  playbackLastAdvancedAt: 0,
+  playbackHasProgressed: false,
+  mapSignature: "",
   connectionGeneration: 0,
   availableDataSources: [],
 };
@@ -199,6 +209,9 @@ const ui = {
   shadowOptions: $("shadow-options"),
   shadowStrength: $("shadow-strength"),
   shadowStrengthValue: $("shadow-strength-value"),
+  showPaused: $("show-paused"),
+  showNoFail: $("show-no-fail"),
+  rankColors: $("rank-colors"),
   heartRateEnabled: $("heart-rate-enabled"),
   heartRateOptions: $("heart-rate-options"),
   heartRateModeButtons: document.querySelectorAll("[data-heart-rate-mode]"),
@@ -233,6 +246,8 @@ const ui = {
   score: $("score"),
   combo: $("combo"),
   rank: $("rank"),
+  pausedIndicator: $("paused-indicator"),
+  noFailIndicator: $("no-fail-indicator"),
   accuracy: $("accuracy"),
   misses: $("misses"),
   health: $("health"),
@@ -259,6 +274,11 @@ function loadSettings() {
     shadow: {
       enabled: saved?.shadow?.enabled !== false,
       strength: normalizeShadowStrength(saved?.shadow?.strength),
+    },
+    gameplay: {
+      showPaused: saved?.gameplay?.showPaused === true,
+      showNoFail: saved?.gameplay?.showNoFail === true,
+      rankColors: saved?.gameplay?.rankColors === true,
     },
     heartRate: {
       enabled: saved?.heartRate?.enabled === true,
@@ -312,6 +332,15 @@ function loadSettings() {
 
   const urlShadowStrength = params.get("shadowstrength");
   if (urlShadowStrength !== null) settings.shadow.strength = normalizeShadowStrength(urlShadowStrength);
+
+  const urlShowPaused = params.get("paused");
+  if (urlShowPaused !== null) settings.gameplay.showPaused = urlShowPaused === "1";
+
+  const urlShowNoFail = params.get("nofail");
+  if (urlShowNoFail !== null) settings.gameplay.showNoFail = urlShowNoFail === "1";
+
+  const urlRankColors = params.get("rankcolors");
+  if (urlRankColors !== null) settings.gameplay.rankColors = urlRankColors === "1";
 
   const urlHeartRateMode = params.get("hr");
   if (urlHeartRateMode !== null) {
@@ -548,6 +577,12 @@ function applySettingsToUrl(url) {
   if (state.settings.shadow.strength !== defaultSettings.shadow.strength) {
     url.searchParams.set("shadowstrength", String(state.settings.shadow.strength));
   } else url.searchParams.delete("shadowstrength");
+  if (state.settings.gameplay.showPaused) url.searchParams.set("paused", "1");
+  else url.searchParams.delete("paused");
+  if (state.settings.dataSource === "datapuller" && state.settings.gameplay.showNoFail) url.searchParams.set("nofail", "1");
+  else url.searchParams.delete("nofail");
+  if (state.settings.gameplay.rankColors) url.searchParams.set("rankcolors", "1");
+  else url.searchParams.delete("rankcolors");
   if (state.settings.heartRate.enabled) {
     url.searchParams.set("hr", state.settings.heartRate.mode);
     if (state.settings.heartRate.provider === "hrcounter") {
@@ -795,6 +830,76 @@ function hasLoadedMap(map) {
   );
 }
 
+function getMapSignature(map) {
+  if (!map) return "";
+  return [map.LevelID, map.SongName, map.Difficulty, map.MapType, map.Duration].join("|");
+}
+
+function resetPlaybackProgress(map = state.map) {
+  state.mapSignature = getMapSignature(map);
+  state.playbackLastElapsed = null;
+  state.playbackLastAdvancedAt = performance.now();
+  state.playbackHasProgressed = false;
+}
+
+function observePlaybackProgress(elapsed) {
+  const current = Math.max(0, Number(elapsed) || 0);
+  if (state.playbackLastElapsed === null) {
+    state.playbackLastElapsed = current;
+    state.playbackLastAdvancedAt = performance.now();
+    return;
+  }
+
+  if (Math.abs(current - state.playbackLastElapsed) >= 0.01) {
+    state.playbackLastElapsed = current;
+    state.playbackLastAdvancedAt = performance.now();
+    state.playbackHasProgressed = true;
+  }
+}
+
+function isNoFailTriggered() {
+  return state.settings.dataSource === "datapuller" &&
+    Boolean(state.map?.LevelFailed && state.map?.Modifiers?.NoFailOn0Energy);
+}
+
+function isLevelActive() {
+  const map = state.map;
+  if (!map || !hasLoadedMap(map) || map.LevelFinished || map.LevelQuit) return false;
+  return map.InLevel !== false || isNoFailTriggered();
+}
+
+function isPlaybackPaused() {
+  if (!isLevelActive() || isNoFailTriggered()) return false;
+  if (state.map?.LevelPaused || state.beatSaberPlusClock?.paused) return true;
+  return state.settings.dataSource === "datapuller" &&
+    state.openSockets === 2 &&
+    state.playbackHasProgressed &&
+    performance.now() - state.playbackLastAdvancedAt >= 2500;
+}
+
+function renderGameplayStatus() {
+  const paused = state.settings.gameplay.showPaused && isPlaybackPaused();
+  const noFail = state.settings.gameplay.showNoFail && isNoFailTriggered();
+  ui.pausedIndicator.hidden = !paused;
+  ui.noFailIndicator.hidden = !noFail;
+  ui.preview.classList.toggle("is-paused", paused);
+  ui.preview.classList.toggle("is-no-fail", noFail);
+}
+
+function getRankColor(rank) {
+  const colors = {
+    SSS: "#00ffff",
+    SS: "#00ffff",
+    S: "#00ff00",
+    A: "#ffff00",
+    B: "#ffa800",
+    C: "#ff5400",
+    D: "#ff0000",
+    E: "#ff0000",
+  };
+  return colors[String(rank || "").toUpperCase()] || "";
+}
+
 function getHealthColor(health) {
   const stops = [
     { value: 0, color: [239, 61, 85] },
@@ -885,6 +990,13 @@ function renderSettings() {
   ui.shadowOptions.hidden = !state.settings.shadow.enabled;
   ui.shadowStrength.value = String(state.settings.shadow.strength);
   ui.shadowStrengthValue.value = `${state.settings.shadow.strength}%`;
+  ui.showPaused.checked = state.settings.gameplay.showPaused;
+  ui.showNoFail.disabled = state.settings.dataSource !== "datapuller";
+  ui.showNoFail.checked = !ui.showNoFail.disabled && state.settings.gameplay.showNoFail;
+  $("show-no-fail-description").textContent = ui.showNoFail.disabled
+    ? "Unavailable for BS+ SO: No Fail trigger data is not provided"
+    : "Keep the overlay visible and mark the cover after failing";
+  ui.rankColors.checked = state.settings.gameplay.rankColors;
   ui.heartRateEnabled.checked = state.settings.heartRate.enabled;
   ui.heartRateOptions.hidden = !state.settings.heartRate.enabled;
   ui.heartRatePort.value = String(state.settings.heartRate.port);
@@ -928,6 +1040,8 @@ function renderSettings() {
   }
 
   renderHeartRate();
+  renderGameplayStatus();
+  if (state.live) renderLive();
   renderShadow();
   syncHeartRatePolling();
   updateResolutionScale();
@@ -1096,7 +1210,9 @@ function renderMap() {
   if (!map) return;
 
   const awaitingData = !hasLoadedMap(map);
-  const levelEnded = Boolean(map.LevelFinished || map.LevelFailed || map.LevelQuit);
+  if (getMapSignature(map) !== state.mapSignature) resetPlaybackProgress(map);
+  const keepNoFailVisible = state.settings.gameplay.showNoFail && isNoFailTriggered();
+  const levelEnded = Boolean(map.LevelFinished || map.LevelQuit || (map.LevelFailed && !keepNoFailVisible));
   const hidden = levelEnded || (isOverlayMode && awaitingData);
   ui.preview.classList.toggle("is-awaiting-data", isOverlayMode && awaitingData);
   ui.preview.classList.toggle("is-ended", levelEnded);
@@ -1128,6 +1244,7 @@ function renderMap() {
   }
 
   renderLive();
+  renderGameplayStatus();
 }
 
 function renderLive() {
@@ -1135,6 +1252,7 @@ function renderLive() {
   if (!live) return;
 
   const elapsed = Number(live.TimeElapsed) || 0;
+  observePlaybackProgress(elapsed);
   const duration = Number(state.map?.Duration) || 0;
   const progress = duration > 0 ? Math.min(1, elapsed / duration) : 0;
   ui.coverTime.textContent = formatTime(elapsed);
@@ -1142,6 +1260,7 @@ function renderLive() {
   ui.score.textContent = formatNumber(live.Score);
   ui.combo.textContent = formatNumber(live.Combo);
   ui.rank.textContent = live.Rank || "—";
+  ui.rank.style.color = state.settings.gameplay.rankColors ? getRankColor(live.Rank) : "";
   ui.accuracy.textContent = Number(live.Accuracy || 0).toFixed(2);
   ui.misses.textContent = formatNumber(live.Misses);
   const health = Math.max(0, Math.min(100, normalizeHealth(live.PlayerHealth)));
@@ -1149,6 +1268,7 @@ function renderLive() {
   ui.health.textContent = formatNumber(health);
   ui.healthFill.style.width = `${health}%`;
   ui.healthFill.style.setProperty("--health-color", `rgb(${red} ${green} ${blue})`);
+  renderGameplayStatus();
 }
 
 function renderHeartRate() {
@@ -1374,6 +1494,8 @@ function closeSockets() {
   state.reconnectTimer = null;
   clearInterval(state.telemetryClockTimer);
   state.telemetryClockTimer = null;
+  clearInterval(state.playbackStatusTimer);
+  state.playbackStatusTimer = null;
   state.beatSaberPlusClock = null;
   state.sockets.forEach((socket) => {
     state.intentionalClosures.add(socket);
@@ -1386,8 +1508,12 @@ function closeSockets() {
 function resetTelemetry() {
   state.map = null;
   state.live = null;
+  resetPlaybackProgress(null);
   ui.preview.classList.toggle("is-awaiting-data", isOverlayMode);
   ui.preview.classList.remove("is-ended");
+  ui.preview.classList.remove("is-paused", "is-no-fail");
+  ui.pausedIndicator.hidden = true;
+  ui.noFailIndicator.hidden = true;
   ui.preview.setAttribute("aria-hidden", String(isOverlayMode));
   renderShadow();
 }
@@ -1553,6 +1679,7 @@ function connectBeatSaberPlus() {
 function connectSelectedTelemetry() {
   closeSockets();
   resetTelemetry();
+  state.playbackStatusTimer = setInterval(renderGameplayStatus, 250);
   if (state.settings.dataSource === "bsplus") connectBeatSaberPlus();
   else connectDataPuller();
 }
@@ -1715,6 +1842,25 @@ ui.shadowEnabled.addEventListener("change", () => {
 
 ui.shadowStrength.addEventListener("input", () => {
   state.settings.shadow.strength = normalizeShadowStrength(ui.shadowStrength.value);
+  saveSettings();
+  renderSettings();
+});
+
+ui.showPaused.addEventListener("change", () => {
+  state.settings.gameplay.showPaused = ui.showPaused.checked;
+  saveSettings();
+  renderSettings();
+});
+
+ui.showNoFail.addEventListener("change", () => {
+  state.settings.gameplay.showNoFail = ui.showNoFail.checked;
+  saveSettings();
+  renderSettings();
+  renderMap();
+});
+
+ui.rankColors.addEventListener("change", () => {
+  state.settings.gameplay.rankColors = ui.rankColors.checked;
   saveSettings();
   renderSettings();
 });
@@ -1926,6 +2072,9 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     const loadedOverlayScale = loadedUrl.searchParams.get("overlayscale");
     const loadedShadowEnabled = loadedUrl.searchParams.get("shadow");
     const loadedShadowStrength = loadedUrl.searchParams.get("shadowstrength");
+    const loadedShowPaused = loadedUrl.searchParams.get("paused");
+    const loadedShowNoFail = loadedUrl.searchParams.get("nofail");
+    const loadedRankColors = loadedUrl.searchParams.get("rankcolors");
     const loadedHeartRateMode = loadedUrl.searchParams.get("hr");
     const loadedHeartRatePosition = loadedUrl.searchParams.get("hrposition");
     const loadedHeartRatePort = loadedUrl.searchParams.get("hrport");
@@ -1942,6 +2091,7 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     if (loadedDataSource === null && loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
       loadedScale === null && loadedTextTransform === null && loadedAccentColor === null && loadedAccentColor2 === null &&
       loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
+      loadedShowPaused === null && loadedShowNoFail === null && loadedRankColors === null &&
       loadedHeartRateMode === null &&
       loadedHeartRatePosition === null && loadedHeartRatePort === null &&
       loadedHeartRateProvider === null && loadedHypeRateDeviceId === null && loadedHeartRateToken === null) {
@@ -1981,6 +2131,9 @@ ui.loadSettingsForm.addEventListener("submit", (event) => {
     if (loadedShadowStrength !== null) {
       nextSettings.shadow.strength = normalizeShadowStrength(loadedShadowStrength);
     }
+    nextSettings.gameplay.showPaused = loadedShowPaused === "1";
+    nextSettings.gameplay.showNoFail = loadedShowNoFail === "1";
+    nextSettings.gameplay.rankColors = loadedRankColors === "1";
     if (loadedHeartRateMode !== null) {
       nextSettings.heartRate.enabled = true;
       nextSettings.heartRate.mode = loadedHeartRateMode;
