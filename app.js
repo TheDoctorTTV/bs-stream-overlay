@@ -13,6 +13,7 @@ const dataSourceValues = ["datapuller", "bsplus"];
 const heartRateProviderValues = ["hrcounter", "pulsoid", "hyperate"];
 
 const defaultSettings = {
+  layout: { mode: "presets", items: {} },
   dataSource: "datapuller",
   position: "top-left",
   fontFamily: "",
@@ -263,6 +264,7 @@ function loadSettings() {
 
   const settings = {
     dataSource: normalizeDataSource(saved?.dataSource),
+    layout: normalizeLayout(params.has("layout") ? params.get("layout") : (isOverlayMode ? null : saved?.layout)),
     position: saved?.position || defaultSettings.position,
     fontFamily: normalizeFontFamily(saved?.fontFamily),
     fontWeight: normalizeFontWeight(saved?.fontWeight),
@@ -550,6 +552,8 @@ function normalizePort(value) {
 }
 
 function applySettingsToUrl(url) {
+  if (state.settings.layout?.mode === "custom") url.searchParams.set("layout", JSON.stringify(state.settings.layout));
+  else url.searchParams.delete("layout");
   if (state.settings.dataSource !== defaultSettings.dataSource) {
     url.searchParams.set("source", state.settings.dataSource);
   } else url.searchParams.delete("source");
@@ -643,6 +647,7 @@ function buildDisplayOverlayUrl() {
 }
 
 function saveSettings() {
+  recordLayoutHistory();
   try {
     localStorage.setItem(storageKey, JSON.stringify(state.settings));
   } catch { }
@@ -1046,6 +1051,8 @@ function renderSettings() {
   syncHeartRatePolling();
   updateResolutionScale();
   updateMarquees();
+  renderCustomLayout();
+  ui.copyOverlayUrlText.textContent = buildDisplayOverlayUrl();
 }
 
 function renderShadow() {
@@ -1275,8 +1282,8 @@ function renderHeartRate() {
   const bpm = Number(state.heartRate) || 0;
   const enabled = state.settings.heartRate.enabled;
   const available = bpm > 0;
-  const paired = enabled && state.settings.heartRate.mode === "paired";
-  const standalone = enabled && state.settings.heartRate.mode === "standalone";
+  const paired = enabled && (state.settings.layout?.mode === "custom" || state.settings.heartRate.mode === "paired");
+  const standalone = enabled && state.settings.layout?.mode !== "custom" && state.settings.heartRate.mode === "standalone";
   const shouldShowValue = !isOverlayMode || available;
   const displayValue = available ? String(Math.round(bpm)) : "--";
   const [red, green, blue] = getHeartRateColor(available ? bpm : 120);
@@ -1720,6 +1727,7 @@ async function connectTelemetry() {
 
 document.querySelectorAll(".position-grid button[data-position]").forEach((button) => {
   button.addEventListener("click", () => {
+    state.settings.layout.mode = "presets";
     state.settings.position = button.dataset.position;
     saveSettings();
     renderSettings();
@@ -2055,108 +2063,113 @@ ui.aboutDialog.addEventListener("click", (event) => {
   if (event.target === ui.aboutDialog) ui.aboutDialog.close();
 });
 
+function settingsFromOverlayUrl(value, baseSettings = state.settings) {
+  const loadedUrl = new URL(value.trim(), window.location.href);
+  const loadedDataSource = loadedUrl.searchParams.get("source");
+  const loadedPosition = loadedUrl.searchParams.get("position");
+  const loadedVisible = loadedUrl.searchParams.get("show");
+  const loadedFont = loadedUrl.searchParams.get("font");
+  const loadedWeight = loadedUrl.searchParams.get("weight");
+  const loadedScale = loadedUrl.searchParams.get("scale");
+  const loadedTextTransform = loadedUrl.searchParams.get("case");
+  const loadedAccentColor = loadedUrl.searchParams.get("accent");
+  const loadedAccentColor2 = loadedUrl.searchParams.get("accent2");
+  const loadedOverlayScale = loadedUrl.searchParams.get("overlayscale");
+  const loadedShadowEnabled = loadedUrl.searchParams.get("shadow");
+  const loadedShadowStrength = loadedUrl.searchParams.get("shadowstrength");
+  const loadedShowPaused = loadedUrl.searchParams.get("paused");
+  const loadedShowNoFail = loadedUrl.searchParams.get("nofail");
+  const loadedRankColors = loadedUrl.searchParams.get("rankcolors");
+  const loadedHeartRateMode = loadedUrl.searchParams.get("hr");
+  const loadedHeartRatePosition = loadedUrl.searchParams.get("hrposition");
+  const loadedHeartRatePort = loadedUrl.searchParams.get("hrport");
+  const loadedHeartRateProvider = loadedUrl.searchParams.get("hrprovider") ??
+    loadedUrl.searchParams.get("hrfallback");
+  const loadedHypeRateDeviceId = loadedUrl.searchParams.get("hrdevice");
+  const loadedSecretParams = new URLSearchParams(loadedUrl.hash.slice(1));
+  const loadedHeartRateToken = loadedSecretParams.get("hrtoken");
+
+  if (loadedPosition !== null && !positionKeys.includes(loadedPosition)) {
+    throw new Error("That URL contains an unsupported overlay position.");
+  }
+
+  if (loadedDataSource === null && loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
+    loadedScale === null && loadedTextTransform === null && loadedAccentColor === null && loadedAccentColor2 === null &&
+    loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
+    loadedShowPaused === null && loadedShowNoFail === null && loadedRankColors === null &&
+    loadedHeartRateMode === null &&
+    loadedHeartRatePosition === null && loadedHeartRatePort === null &&
+    loadedHeartRateProvider === null && loadedHypeRateDeviceId === null && loadedHeartRateToken === null) {
+    throw new Error("That URL does not contain overlay settings.");
+  }
+
+  if (loadedHeartRateMode !== null && !heartRateModeValues.includes(loadedHeartRateMode)) {
+    throw new Error("That URL contains an unsupported heart rate display mode.");
+  }
+
+  if (loadedHeartRatePosition !== null && !positionKeys.includes(loadedHeartRatePosition)) {
+    throw new Error("That URL contains an unsupported heart rate position.");
+  }
+
+  const legacyDisabledHeartRateFallback = !loadedUrl.searchParams.has("hrprovider") &&
+    loadedUrl.searchParams.has("hrfallback") && loadedHeartRateProvider === "";
+  if (loadedHeartRateProvider !== null && !legacyDisabledHeartRateFallback &&
+    !heartRateProviderValues.includes(loadedHeartRateProvider)) {
+    throw new Error("That URL contains an unsupported heart rate provider.");
+  }
+
+  if (loadedDataSource !== null && !dataSourceValues.includes(loadedDataSource)) {
+    throw new Error("That URL contains an unsupported song data source.");
+  }
+
+  const nextSettings = structuredClone(baseSettings);
+  nextSettings.layout = normalizeLayout(loadedUrl.searchParams.get("layout"));
+  nextSettings.dataSource = loadedDataSource || defaultSettings.dataSource;
+  if (loadedPosition !== null) nextSettings.position = loadedPosition;
+  if (loadedFont !== null) nextSettings.fontFamily = normalizeFontFamily(loadedFont);
+  if (loadedWeight !== null) nextSettings.fontWeight = normalizeFontWeight(loadedWeight);
+  if (loadedScale !== null) nextSettings.fontScale = normalizeFontScale(loadedScale);
+  if (loadedTextTransform !== null) nextSettings.textTransform = normalizeTextTransform(loadedTextTransform);
+  if (loadedAccentColor !== null) nextSettings.accentColor = normalizeAccentColor(loadedAccentColor);
+  nextSettings.accentColor2 = normalizeOptionalAccentColor(loadedAccentColor2);
+  if (loadedOverlayScale !== null) nextSettings.overlayScale = normalizeOverlayScale(loadedOverlayScale);
+  if (loadedShadowEnabled !== null) nextSettings.shadow.enabled = loadedShadowEnabled !== "0";
+  if (loadedShadowStrength !== null) {
+    nextSettings.shadow.strength = normalizeShadowStrength(loadedShadowStrength);
+  }
+  nextSettings.gameplay.showPaused = loadedShowPaused === "1";
+  nextSettings.gameplay.showNoFail = loadedShowNoFail === "1";
+  nextSettings.gameplay.rankColors = loadedRankColors === "1";
+  if (loadedHeartRateMode !== null) {
+    nextSettings.heartRate.enabled = true;
+    nextSettings.heartRate.mode = loadedHeartRateMode;
+  }
+  if (loadedHeartRatePosition !== null) nextSettings.heartRate.position = loadedHeartRatePosition;
+  if (loadedHeartRatePort !== null) nextSettings.heartRate.port = normalizePort(loadedHeartRatePort);
+  if (loadedHeartRateProvider !== null) {
+    nextSettings.heartRate.provider = normalizeHeartRateProvider(loadedHeartRateProvider);
+  }
+  if (loadedHypeRateDeviceId !== null) {
+    nextSettings.heartRate.hyperateDeviceId = normalizeCredential(loadedHypeRateDeviceId);
+  }
+  if (loadedHeartRateToken !== null) {
+    if (nextSettings.heartRate.provider === "pulsoid") {
+      nextSettings.heartRate.pulsoidToken = normalizeCredential(loadedHeartRateToken);
+    }
+  }
+
+  if (loadedVisible !== null) {
+    const shown = new Set(loadedVisible.split(",").filter((key) => visibleKeys.includes(key)));
+    nextSettings.visible = Object.fromEntries(visibleKeys.map((key) => [key, shown.has(key)]));
+  }
+  return nextSettings;
+}
+
 ui.loadSettingsForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
   try {
-    const loadedUrl = new URL(ui.loadSettingsUrl.value.trim(), window.location.href);
-    const loadedDataSource = loadedUrl.searchParams.get("source");
-    const loadedPosition = loadedUrl.searchParams.get("position");
-    const loadedVisible = loadedUrl.searchParams.get("show");
-    const loadedFont = loadedUrl.searchParams.get("font");
-    const loadedWeight = loadedUrl.searchParams.get("weight");
-    const loadedScale = loadedUrl.searchParams.get("scale");
-    const loadedTextTransform = loadedUrl.searchParams.get("case");
-    const loadedAccentColor = loadedUrl.searchParams.get("accent");
-    const loadedAccentColor2 = loadedUrl.searchParams.get("accent2");
-    const loadedOverlayScale = loadedUrl.searchParams.get("overlayscale");
-    const loadedShadowEnabled = loadedUrl.searchParams.get("shadow");
-    const loadedShadowStrength = loadedUrl.searchParams.get("shadowstrength");
-    const loadedShowPaused = loadedUrl.searchParams.get("paused");
-    const loadedShowNoFail = loadedUrl.searchParams.get("nofail");
-    const loadedRankColors = loadedUrl.searchParams.get("rankcolors");
-    const loadedHeartRateMode = loadedUrl.searchParams.get("hr");
-    const loadedHeartRatePosition = loadedUrl.searchParams.get("hrposition");
-    const loadedHeartRatePort = loadedUrl.searchParams.get("hrport");
-    const loadedHeartRateProvider = loadedUrl.searchParams.get("hrprovider") ??
-      loadedUrl.searchParams.get("hrfallback");
-    const loadedHypeRateDeviceId = loadedUrl.searchParams.get("hrdevice");
-    const loadedSecretParams = new URLSearchParams(loadedUrl.hash.slice(1));
-    const loadedHeartRateToken = loadedSecretParams.get("hrtoken");
-
-    if (loadedPosition !== null && !positionKeys.includes(loadedPosition)) {
-      throw new Error("That URL contains an unsupported overlay position.");
-    }
-
-    if (loadedDataSource === null && loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
-      loadedScale === null && loadedTextTransform === null && loadedAccentColor === null && loadedAccentColor2 === null &&
-      loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
-      loadedShowPaused === null && loadedShowNoFail === null && loadedRankColors === null &&
-      loadedHeartRateMode === null &&
-      loadedHeartRatePosition === null && loadedHeartRatePort === null &&
-      loadedHeartRateProvider === null && loadedHypeRateDeviceId === null && loadedHeartRateToken === null) {
-      throw new Error("That URL does not contain overlay settings.");
-    }
-
-    if (loadedHeartRateMode !== null && !heartRateModeValues.includes(loadedHeartRateMode)) {
-      throw new Error("That URL contains an unsupported heart rate display mode.");
-    }
-
-    if (loadedHeartRatePosition !== null && !positionKeys.includes(loadedHeartRatePosition)) {
-      throw new Error("That URL contains an unsupported heart rate position.");
-    }
-
-    const legacyDisabledHeartRateFallback = !loadedUrl.searchParams.has("hrprovider") &&
-      loadedUrl.searchParams.has("hrfallback") && loadedHeartRateProvider === "";
-    if (loadedHeartRateProvider !== null && !legacyDisabledHeartRateFallback &&
-      !heartRateProviderValues.includes(loadedHeartRateProvider)) {
-      throw new Error("That URL contains an unsupported heart rate provider.");
-    }
-
-    if (loadedDataSource !== null && !dataSourceValues.includes(loadedDataSource)) {
-      throw new Error("That URL contains an unsupported song data source.");
-    }
-
-    const nextSettings = structuredClone(state.settings);
-    nextSettings.dataSource = loadedDataSource || defaultSettings.dataSource;
-    if (loadedPosition !== null) nextSettings.position = loadedPosition;
-    if (loadedFont !== null) nextSettings.fontFamily = normalizeFontFamily(loadedFont);
-    if (loadedWeight !== null) nextSettings.fontWeight = normalizeFontWeight(loadedWeight);
-    if (loadedScale !== null) nextSettings.fontScale = normalizeFontScale(loadedScale);
-    if (loadedTextTransform !== null) nextSettings.textTransform = normalizeTextTransform(loadedTextTransform);
-    if (loadedAccentColor !== null) nextSettings.accentColor = normalizeAccentColor(loadedAccentColor);
-    nextSettings.accentColor2 = normalizeOptionalAccentColor(loadedAccentColor2);
-    if (loadedOverlayScale !== null) nextSettings.overlayScale = normalizeOverlayScale(loadedOverlayScale);
-    if (loadedShadowEnabled !== null) nextSettings.shadow.enabled = loadedShadowEnabled !== "0";
-    if (loadedShadowStrength !== null) {
-      nextSettings.shadow.strength = normalizeShadowStrength(loadedShadowStrength);
-    }
-    nextSettings.gameplay.showPaused = loadedShowPaused === "1";
-    nextSettings.gameplay.showNoFail = loadedShowNoFail === "1";
-    nextSettings.gameplay.rankColors = loadedRankColors === "1";
-    if (loadedHeartRateMode !== null) {
-      nextSettings.heartRate.enabled = true;
-      nextSettings.heartRate.mode = loadedHeartRateMode;
-    }
-    if (loadedHeartRatePosition !== null) nextSettings.heartRate.position = loadedHeartRatePosition;
-    if (loadedHeartRatePort !== null) nextSettings.heartRate.port = normalizePort(loadedHeartRatePort);
-    if (loadedHeartRateProvider !== null) {
-      nextSettings.heartRate.provider = normalizeHeartRateProvider(loadedHeartRateProvider);
-    }
-    if (loadedHypeRateDeviceId !== null) {
-      nextSettings.heartRate.hyperateDeviceId = normalizeCredential(loadedHypeRateDeviceId);
-    }
-    if (loadedHeartRateToken !== null) {
-      if (nextSettings.heartRate.provider === "pulsoid") {
-        nextSettings.heartRate.pulsoidToken = normalizeCredential(loadedHeartRateToken);
-      }
-    }
-
-    if (loadedVisible !== null) {
-      const shown = new Set(loadedVisible.split(",").filter((key) => visibleKeys.includes(key)));
-      nextSettings.visible = Object.fromEntries(visibleKeys.map((key) => [key, shown.has(key)]));
-    }
-
+    const nextSettings = settingsFromOverlayUrl(ui.loadSettingsUrl.value);
     state.settings = nextSettings;
     saveSettings();
     renderSettings();

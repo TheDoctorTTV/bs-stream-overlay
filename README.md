@@ -80,3 +80,23 @@ DataPuller exposes some fields that BS+ SO does not, including NJS and (dependin
 
 # Disclaimer
 This project was made with the assistance of AI.
+
+## Custom layout editor
+
+Choose **Custom layout** beneath the corner presets to arrange individual overlay elements on a 1920 × 1080 canvas. Select an element by clicking its sidebar row (text or empty space) or clicking it on the canvas. Only the actual switch changes visibility; selecting a row opens custom mode. Click an empty area of the canvas to clear selection. Drag to move it, drag a corner handle to scale it proportionally, and drag the round handle to rotate it. For health, the left/right handles adjust only the bar width and preserve text size; top/bottom and corner handles scale the entire health element. The sidebar also provides exact X/Y coordinates, scale, and rotation. Arrow keys move the selected element by one pixel; hold Shift for ten pixels. **Reset selected element** restores its default transform; **Reset all elements** restores every element’s default position, scale, and rotation without changing visibility settings. Rotation pivots around the element’s center, and corner scaling keeps its center fixed when there is room. Dragging snaps edges and centers to canvas boundaries, canvas center lines, and nearby visible elements, with pink alignment guides. Hold Alt to bypass snapping or use arrow keys for precise nudging. Moving, resizing, rotating, and numeric edits keep the full rotated element within all four canvas edges; oversized elements are scaled to fit.
+
+Cover art, elapsed time (including its progress ring), and the paused/No Fail indicators form one group and share a transform. Selecting any of their sidebar rows selects this group. All other song/performance fields, health, and heart rate have independent transforms. Their existing toggles still control visibility. Unavailable fields have placeholders in the editor only. Colored ranks and corner shadows remain styling options.
+
+The four song-panel corner presets and four independent heart-rate corner positions remain available. Selecting a song-panel preset exits custom mode without discarding custom transforms; selecting Custom layout restores them. Custom mode positions heart rate independently regardless of its preset pairing setting. Custom layouts are saved locally and included in copied URLs; **Load settings** restores them. Browser sources scale the reference canvas proportionally to fit their resolution. Global overlay scale applies to presets; custom elements use their individual scale controls.
+
+### Saved custom presets
+
+Custom layout offers three local preset slots. **Save preset 1**, **2**, or **3** stores the current overlay URL, including appearance, visibility and custom transforms. The slot then becomes **Load preset**; the adjacent trash button clears just that slot so it can be saved again. Loading restores the saved settings immediately. Slots persist across reloads and resetting the current settings, and are stored only in this browser for this site. Use **Copy overlay URL** to share a saved layout with someone else.
+
+### Selecting multiple elements
+
+Drag across an empty area of the custom canvas to select multiple visible elements. Hold Shift while clicking elements or sidebar rows to add or remove them, or Shift-drag to extend a selection. Drag the selection to move it together, and use its round handle or Rotation field to rotate around the group's center. Arrow keys nudge the entire selection; X/Y move its bounds. The group snaps and stays inside the canvas without changing relative spacing or individual scales. Group rotation stops when the selected arrangement cannot fit inside the canvas. Click empty canvas space to deselect. The selected reset button resets all selected elements; individual element resize handles return when only one element is selected.
+
+### Undo and redo
+
+Use **Ctrl+Z** to undo and **Ctrl+Shift+Z** to redo, or use the arrow buttons beside the reset controls. Undo covers layout transforms (including health width and group edits), resets, visibility, appearance changes, and loading settings or saved presets. Each completed drag is one step. Up to 100 edits are kept during the current page session; a new edit clears redo history. Text fields keep their normal text-editing shortcuts, and provider credentials and saved preset slots are unaffected.
