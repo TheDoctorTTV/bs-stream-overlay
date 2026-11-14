@@ -8,11 +8,11 @@ const pulsoidOAuthStateKey = "bs-stream-overlay-pulsoid-oauth-state";
 const pulsoidClientId = "a5a846b3-1292-4a22-837b-a13a55431e0e";
 const hyperateViewerToken = "bnQ1FoJmfiRprrSUJzrFxt8x8BbllHyqIWq4LsRjV7aCrLuLot6QyCQM9NZRkd9z";
 const isOverlayMode = params.get("overlay") === "1";
-const referenceCanvas = { width: 1920, height: 1080 };
 const dataSourceValues = ["datapuller", "bsplus"];
 const heartRateProviderValues = ["hrcounter", "pulsoid", "hyperate"];
 
 const defaultSettings = {
+  orientation: "horizontal",
   layout: { mode: "presets", items: {} },
   dataSource: "datapuller",
   position: "top-left",
@@ -263,6 +263,7 @@ function loadSettings() {
   } catch { }
 
   const settings = {
+    orientation: normalizeOrientation(params.get("orientation") ?? (isOverlayMode ? null : saved?.orientation)),
     dataSource: normalizeDataSource(saved?.dataSource),
     layout: normalizeLayout(params.has("layout") ? params.get("layout") : (isOverlayMode ? null : saved?.layout)),
     position: saved?.position || defaultSettings.position,
@@ -552,6 +553,8 @@ function normalizePort(value) {
 }
 
 function applySettingsToUrl(url) {
+  if (state.settings.orientation === "vertical") url.searchParams.set("orientation", "vertical");
+  else url.searchParams.delete("orientation");
   if (state.settings.layout?.mode === "custom") url.searchParams.set("layout", JSON.stringify(state.settings.layout));
   else url.searchParams.delete("layout");
   if (state.settings.dataSource !== defaultSettings.dataSource) {
@@ -650,6 +653,7 @@ function saveSettings() {
   recordLayoutHistory();
   try {
     localStorage.setItem(storageKey, JSON.stringify(state.settings));
+    if (!isOverlayMode) saveOrientationProfile(state.settings);
   } catch { }
 }
 
@@ -951,6 +955,7 @@ function updateMarquees() {
 }
 
 function renderSettings() {
+  renderCanvas();
   const unavailableFields = unavailableFieldsByDataSource[state.settings.dataSource] || new Set();
   ui.copyOverlayUrlText.textContent = buildDisplayOverlayUrl();
   ui.preview.dataset.position = state.settings.position;
@@ -1064,18 +1069,16 @@ function renderShadow() {
 }
 
 function updateResolutionScale() {
-  const canvasScale = isOverlayMode
-    ? Math.min(window.innerWidth / referenceCanvas.width, window.innerHeight / referenceCanvas.height)
-    : 1;
+  const referenceCanvas = getCanvasSize(state.settings.orientation);
+  const stage = document.getElementById("preview-stage");
+  const canvasScale = Math.min(stage.clientWidth / referenceCanvas.width, stage.clientHeight / referenceCanvas.height);
   const resolutionScale = canvasScale * (state.settings.overlayScale / 100);
   const safeScale = Math.max(0.01, resolutionScale);
 
   ui.preview.style.setProperty("--overlay-resolution-scale", String(safeScale));
   ui.heartRateStandalone.style.setProperty("--overlay-resolution-scale", String(safeScale));
-  if (isOverlayMode) ui.preview.style.setProperty("--overlay-edge-inset", `${34 * canvasScale}px`);
-  else ui.preview.style.removeProperty("--overlay-edge-inset");
-  if (isOverlayMode) ui.heartRateStandalone.style.setProperty("--overlay-edge-inset", `${34 * canvasScale}px`);
-  else ui.heartRateStandalone.style.removeProperty("--overlay-edge-inset");
+  ui.preview.style.setProperty("--overlay-edge-inset", `${34 * canvasScale}px`);
+  ui.heartRateStandalone.style.setProperty("--overlay-edge-inset", `${34 * canvasScale}px`);
 }
 
 function getSelectedFontLabel() {
@@ -1220,11 +1223,10 @@ function renderMap() {
   if (getMapSignature(map) !== state.mapSignature) resetPlaybackProgress(map);
   const keepNoFailVisible = state.settings.gameplay.showNoFail && isNoFailTriggered();
   const levelEnded = Boolean(map.LevelFinished || map.LevelQuit || (map.LevelFailed && !keepNoFailVisible));
-  const hidden = levelEnded || (isOverlayMode && awaitingData);
   ui.preview.classList.toggle("is-awaiting-data", isOverlayMode && awaitingData);
   ui.preview.classList.toggle("is-ended", levelEnded);
   renderShadow();
-  ui.preview.setAttribute("aria-hidden", String(hidden));
+  renderOverlayVisibility();
 
   const cover = normalizeCover(map.CoverImage);
   ui.songTitle.textContent = map.SongName || "Waiting for a song";
@@ -1278,6 +1280,16 @@ function renderLive() {
   renderGameplayStatus();
 }
 
+function renderOverlayVisibility() {
+  const independentHeartRate = isOverlayMode && state.settings.layout?.mode === "custom" &&
+    state.settings.heartRate.enabled &&
+    ["pulsoid", "hyperate"].includes(state.settings.heartRate.provider) && Number(state.heartRate) > 0;
+  ui.preview.classList.toggle("has-independent-heart-rate", independentHeartRate);
+  const hidden = ui.preview.classList.contains("is-awaiting-data") ||
+    ui.preview.classList.contains("is-ended");
+  ui.preview.setAttribute("aria-hidden", String(hidden && !independentHeartRate));
+}
+
 function renderHeartRate() {
   const bpm = Number(state.heartRate) || 0;
   const enabled = state.settings.heartRate.enabled;
@@ -1294,6 +1306,7 @@ function renderHeartRate() {
   ui.preview.classList.toggle("has-paired-heart-rate", paired && shouldShowValue);
   ui.heartRatePairedValue.textContent = displayValue;
   ui.heartRateStandaloneValue.textContent = displayValue;
+  renderOverlayVisibility();
 
   [ui.heartRatePaired, ui.heartRateStandalone].forEach((element) => {
     element.classList.toggle("is-unavailable", !available);
@@ -1521,7 +1534,7 @@ function resetTelemetry() {
   ui.preview.classList.remove("is-paused", "is-no-fail");
   ui.pausedIndicator.hidden = true;
   ui.noFailIndicator.hidden = true;
-  ui.preview.setAttribute("aria-hidden", String(isOverlayMode));
+  renderOverlayVisibility();
   renderShadow();
 }
 
@@ -2065,6 +2078,10 @@ ui.aboutDialog.addEventListener("click", (event) => {
 
 function settingsFromOverlayUrl(value, baseSettings = state.settings) {
   const loadedUrl = new URL(value.trim(), window.location.href);
+  const loadedOrientation = loadedUrl.searchParams.get("orientation");
+  if (loadedOrientation !== null && !["horizontal", "vertical"].includes(loadedOrientation)) {
+    throw new Error("That URL contains an unsupported canvas orientation.");
+  }
   const loadedDataSource = loadedUrl.searchParams.get("source");
   const loadedPosition = loadedUrl.searchParams.get("position");
   const loadedVisible = loadedUrl.searchParams.get("show");
@@ -2093,7 +2110,7 @@ function settingsFromOverlayUrl(value, baseSettings = state.settings) {
     throw new Error("That URL contains an unsupported overlay position.");
   }
 
-  if (loadedDataSource === null && loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
+  if (loadedOrientation === null && !loadedUrl.searchParams.has("layout") && loadedDataSource === null && loadedPosition === null && loadedVisible === null && loadedFont === null && loadedWeight === null &&
     loadedScale === null && loadedTextTransform === null && loadedAccentColor === null && loadedAccentColor2 === null &&
     loadedOverlayScale === null && loadedShadowEnabled === null && loadedShadowStrength === null &&
     loadedShowPaused === null && loadedShowNoFail === null && loadedRankColors === null &&
@@ -2123,6 +2140,7 @@ function settingsFromOverlayUrl(value, baseSettings = state.settings) {
   }
 
   const nextSettings = structuredClone(baseSettings);
+  nextSettings.orientation = normalizeOrientation(loadedOrientation);
   nextSettings.layout = normalizeLayout(loadedUrl.searchParams.get("layout"));
   nextSettings.dataSource = loadedDataSource || defaultSettings.dataSource;
   if (loadedPosition !== null) nextSettings.position = loadedPosition;
@@ -2194,6 +2212,7 @@ document.documentElement.classList.toggle("overlay-mode", isOverlayMode);
 document.body.classList.toggle("overlay-mode", isOverlayMode);
 ui.preview.classList.toggle("is-awaiting-data", isOverlayMode);
 initializeFontPicker();
+initializeCanvasControls();
 updateResolutionScale();
 renderSettings();
 if (!isOverlayMode) saveSettings();

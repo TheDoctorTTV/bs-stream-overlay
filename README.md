@@ -80,7 +80,9 @@ DataPuller exposes some fields that BS+ SO does not, including NJS and (dependin
 
 ## Custom layout editor
 
-Choose **Custom layout** to move, resize, and rotate elements with snapping. Select elements on the canvas or in the sidebar; drag a selection box or Shift-click to select several. Health bar side handles adjust its width without scaling text. Save up to three local presets, or share layouts through the overlay URL. Use **Ctrl+Z** to undo and **Ctrl+Shift+Z** to redo.
+Choose **Custom layout** to move, resize, and rotate elements with snapping. Select elements on the canvas or in the sidebar; drag a selection box or Shift-click to select several. Health bar side handles adjust its width without scaling text. Choose **Horizontal** (1920 × 1080, 16:9) or **Vertical** (1080 × 1920, 9:16) above the layout presets. Each orientation remembers its current layout, appearance, undo history, and three local preset slots. Existing layouts and saved presets remain under Horizontal. All four corner presets work with either canvas. Share layouts through the overlay URL, which includes the orientation; set your streaming browser source to the matching dimensions. Use **Ctrl+Z** to undo and **Ctrl+Shift+Z** to redo.
+
+Upload a PNG, JPG, or WebP screenshot under **Background** to line up elements with your stream. Use a 16:9 image for Horizontal or a 9:16 image for Vertical (up to 10 MB). Each orientation stores its own background locally in this browser. Backgrounds appear only in the editor and are never included in the overlay output, shared URLs, or saved layout presets. **Remove background** restores the checkerboard.
 
 # Disclaimer
 This project was made with the assistance of AI.

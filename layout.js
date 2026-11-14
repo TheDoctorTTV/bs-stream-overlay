@@ -16,6 +16,17 @@ const layoutNames = {
   health: "Health bar",
   heartRate: "Heart rate",
 };
+function normalizeOrientation(value) {
+  return value === "vertical" ? "vertical" : "horizontal";
+}
+function getCanvasSize(orientation = "horizontal") {
+  return normalizeOrientation(orientation) === "vertical"
+    ? { width: 1080, height: 1920 }
+    : { width: 1920, height: 1080 };
+}
+function activeCanvasSize() {
+  return getCanvasSize(typeof state === "undefined" ? "horizontal" : state.settings.orientation);
+}
 function normalizeLayout(value) {
   try {
     if (typeof value === "string") value = JSON.parse(value);
@@ -30,7 +41,7 @@ function normalizeLayout(value) {
     if (item && typeof item === "object")
       items[key] = {
         x: number(item.x, 34, -1920, 1920),
-        y: number(item.y, 34, -1080, 1080),
+        y: number(item.y, 34, -1920, 1920),
         scale: number(item.scale, 1, 0.1, 5),
         angle: number(item.angle, 0, -180, 180),
         ...(key === "health"
@@ -60,6 +71,12 @@ function layoutDefault(key) {
     health: [40, 280],
     heartRate: [1150, 40],
   };
+  if (activeCanvasSize().height > activeCanvasSize().width) {
+    Object.assign(positions, {
+      score: [40, 310], combo: [40, 375], rank: [40, 435],
+      accuracy: [210, 435], misses: [40, 495], health: [40, 560], heartRate: [800, 40],
+    });
+  }
   const [x, y] = positions[key] || [40, 40 + index * 50];
   return {
     x,
@@ -359,7 +376,7 @@ function initializeLayoutEditor() {
     constrainLayoutItem(item, editorBox(layoutEditorState.selected));
     commit();
   };
-  new ResizeObserver(() => renderCustomLayout()).observe(stage);
+  new ResizeObserver(() => { updateResolutionScale(); renderCustomLayout(); }).observe(stage);
 }
 function renderCustomLayout() {
   if (!layoutEditorState) initializeLayoutEditor();
@@ -410,10 +427,11 @@ function renderCustomLayout() {
       .querySelector("[role=button]")
       .setAttribute("aria-pressed", String(selected));
   });
+  refreshLayoutPresets();
   if (!active) return;
   editor.factor = Math.min(
-    editor.stage.clientWidth / 1920,
-    editor.stage.clientHeight / 1080,
+    editor.stage.clientWidth / activeCanvasSize().width,
+    editor.stage.clientHeight / activeCanvasSize().height,
   );
   ui.preview.style.setProperty("--custom-canvas-scale", editor.factor);
   ui.preview.style.setProperty(
@@ -530,8 +548,8 @@ function constrainLayoutItem(item, box) {
   let bounds = layoutBounds(item, box);
   const fit = Math.min(
     1,
-    1920 / (bounds.right - bounds.left),
-    1080 / (bounds.bottom - bounds.top),
+    activeCanvasSize().width / (bounds.right - bounds.left),
+    activeCanvasSize().height / (bounds.bottom - bounds.top),
   );
   if (fit < 1) {
     item.scale *= fit;
@@ -539,8 +557,8 @@ function constrainLayoutItem(item, box) {
     item.y = bounds.cy - (box.height * item.scale) / 2;
     bounds = layoutBounds(item, box);
   }
-  item.x += Math.max(0, -bounds.left) - Math.max(0, bounds.right - 1920);
-  item.y += Math.max(0, -bounds.top) - Math.max(0, bounds.bottom - 1080);
+  item.x += Math.max(0, -bounds.left) - Math.max(0, bounds.right - activeCanvasSize().width);
+  item.y += Math.max(0, -bounds.top) - Math.max(0, bounds.bottom - activeCanvasSize().height);
   return item;
 }
 
@@ -553,7 +571,7 @@ function snapLayoutItem(original, box, targets, factor) {
   for (const axis of ["x", "y"]) {
     const keys =
       axis === "x" ? ["left", "cx", "right"] : ["top", "cy", "bottom"];
-    const limit = axis === "x" ? 1920 : 1080;
+    const limit = axis === "x" ? activeCanvasSize().width : activeCanvasSize().height;
     const candidates = [0, limit / 2, limit];
     for (const target of targets) {
       const gap =
@@ -598,11 +616,11 @@ function resizeHealthWidth(start, box, handle, dx, dy) {
   const cosine = Math.abs(Math.cos(radians)),
     sine = Math.abs(Math.sin(radians));
   const maximum = Math.min(
-    1920,
+    activeCanvasSize().width,
     cosine > 1e-8
-      ? (1920 / start.scale - box.height * sine) / cosine
+      ? (activeCanvasSize().width / start.scale - box.height * sine) / cosine
       : Infinity,
-    sine > 1e-8 ? (1080 / start.scale - box.height * cosine) / sine : Infinity,
+    sine > 1e-8 ? (activeCanvasSize().height / start.scale - box.height * cosine) / sine : Infinity,
   );
   const delta = (dx * Math.cos(radians) + dy * Math.sin(radians)) / start.scale;
   const width = Math.max(
@@ -617,9 +635,21 @@ function resizeHealthWidth(start, box, handle, dx, dy) {
 }
 
 const layoutPresetsStorageKey = "bs-stream-overlay-layout-presets-v1";
+function layoutPresetsKey() {
+  return state.settings.orientation === "vertical" ? `${layoutPresetsStorageKey}-vertical` : layoutPresetsStorageKey;
+}
+let renderLayoutPresets = () => {};
+let renderedPresetOrientation;
+function refreshLayoutPresets() {
+  if (!isOverlayMode && renderedPresetOrientation !== state.settings.orientation) {
+    renderedPresetOrientation = state.settings.orientation;
+    document.getElementById("layout-preset-message").hidden = true;
+    renderLayoutPresets();
+  }
+}
 function readLayoutPresets() {
   try {
-    const saved = JSON.parse(localStorage.getItem(layoutPresetsStorageKey));
+    const saved = JSON.parse(localStorage.getItem(layoutPresetsKey()));
     return Array.from({ length: 3 }, (_, index) =>
       Array.isArray(saved) && typeof saved[index] === "string" && saved[index]
         ? saved[index]
@@ -659,6 +689,8 @@ function initializeLayoutPresets() {
             base.heartRate.hyperateDeviceId =
               state.settings.heartRate.hyperateDeviceId;
             const next = settingsFromOverlayUrl(current[index], base);
+            if (next.orientation !== state.settings.orientation)
+              throw new Error("This preset belongs to a different orientation.");
             if (next.layout.mode !== "custom")
               throw new Error("This preset does not contain a custom layout.");
             state.settings = next;
@@ -670,7 +702,7 @@ function initializeLayoutPresets() {
           } else {
             current[index] = buildOverlayUrl();
             localStorage.setItem(
-              layoutPresetsStorageKey,
+              layoutPresetsKey(),
               JSON.stringify(current),
             );
             report(`Preset ${number} saved.`);
@@ -701,7 +733,7 @@ function initializeLayoutPresets() {
           const current = readLayoutPresets();
           current[index] = null;
           localStorage.setItem(
-            layoutPresetsStorageKey,
+            layoutPresetsKey(),
             JSON.stringify(current),
           );
           render();
@@ -718,9 +750,10 @@ function initializeLayoutPresets() {
       container.append(row);
     });
   };
-  render();
+  renderLayoutPresets = render;
+  refreshLayoutPresets();
   window.addEventListener("storage", (event) => {
-    if (event.key === layoutPresetsStorageKey || event.key === null) render();
+    if (event.key === layoutPresetsKey() || event.key === null) render();
   });
 }
 
@@ -774,8 +807,8 @@ function startLayoutMarquee(event) {
     const area = {
       left: Math.max(0, Math.min(origin.x, point.x)),
       top: Math.max(0, Math.min(origin.y, point.y)),
-      right: Math.min(1920, Math.max(origin.x, point.x)),
-      bottom: Math.min(1080, Math.max(origin.y, point.y)),
+      right: Math.min(activeCanvasSize().width, Math.max(origin.x, point.x)),
+      bottom: Math.min(activeCanvasSize().height, Math.max(origin.y, point.y)),
     };
     Object.assign(editor.marquee.style, {
       left: `${area.left}px`,
@@ -849,8 +882,8 @@ function layoutGroupBounds(entries) {
 // A common correction keeps relative spacing and individual scales intact at canvas edges.
 function moveLayoutGroup(entries, dx, dy) {
   const bounds = layoutGroupBounds(entries);
-  dx = Math.max(-bounds.left, Math.min(1920 - bounds.right, dx));
-  dy = Math.max(-bounds.top, Math.min(1080 - bounds.bottom, dy));
+  dx = Math.max(-bounds.left, Math.min(activeCanvasSize().width - bounds.right, dx));
+  dy = Math.max(-bounds.top, Math.min(activeCanvasSize().height - bounds.bottom, dy));
   return entries.map((entry) => ({
     ...entry,
     item: { ...entry.item, x: entry.item.x + dx, y: entry.item.y + dy },
@@ -884,8 +917,8 @@ function rotateLayoutGroup(entries, degrees) {
   });
   const bounds = layoutGroupBounds(rotated);
   if (
-    bounds.right - bounds.left > 1920 + 1e-6 ||
-    bounds.bottom - bounds.top > 1080 + 1e-6
+    bounds.right - bounds.left > activeCanvasSize().width + 1e-6 ||
+    bounds.bottom - bounds.top > activeCanvasSize().height + 1e-6
   )
     return null;
   return moveLayoutGroup(rotated, 0, 0);
@@ -1056,7 +1089,10 @@ function createLayoutHistory(limit = 100) {
     },
   };
 }
-const layoutHistory = createLayoutHistory();
+const layoutHistories = { horizontal: createLayoutHistory(), vertical: createLayoutHistory() };
+function getLayoutHistory() {
+  return layoutHistories[normalizeOrientation(state.settings.orientation)];
+}
 let applyingLayoutHistory = false;
 let layoutHistoryPointerActive = false;
 
@@ -1090,7 +1126,7 @@ function layoutHistorySignature(value) {
 function recordLayoutHistory() {
   if (isOverlayMode || applyingLayoutHistory) return;
   const settings = layoutHistorySettings(state.settings);
-  layoutHistory.push(
+  getLayoutHistory().push(
     {
       settings,
       selection: [...(layoutEditorState?.selection || [])],
@@ -1104,8 +1140,8 @@ function recordLayoutHistory() {
 function updateLayoutHistoryControls() {
   const undo = document.getElementById("layout-undo"),
     redo = document.getElementById("layout-redo");
-  if (undo) undo.disabled = !layoutHistory.canUndo;
-  if (redo) redo.disabled = !layoutHistory.canRedo;
+  if (undo) undo.disabled = !getLayoutHistory().canUndo;
+  if (redo) redo.disabled = !getLayoutHistory().canRedo;
 }
 
 function restoreLayoutHistory(redo = false) {
@@ -1113,7 +1149,7 @@ function restoreLayoutHistory(redo = false) {
   // Commit a typed transform before undoing it, then let the controls refresh.
   const focused = document.activeElement;
   if (focused?.matches(".layout-properties input")) focused.blur();
-  const snapshot = redo ? layoutHistory.redo() : layoutHistory.undo();
+  const snapshot = redo ? getLayoutHistory().redo() : getLayoutHistory().undo();
   if (!snapshot) return;
   const dataSource = state.settings.dataSource;
   const connection = Object.fromEntries(

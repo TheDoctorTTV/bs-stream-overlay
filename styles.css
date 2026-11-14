@@ -2506,8 +2506,15 @@ body.overlay-mode {
 .layout-icon-button path { stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .layout-icon-button text { fill: currentColor; font-family: var(--font); font-size: 7px; font-weight: 800; text-anchor: middle; }
 .overlay-preview.custom-layout-canvas {
-  inset: 0 auto auto 0; width: 1920px; height: 1080px; display: block;
+  inset: 0 auto auto 0; width: var(--canvas-width, 1920px); height: var(--canvas-height, 1080px); display: block;
   transform: scale(var(--custom-canvas-scale)); transform-origin: top left; transition: opacity 700ms ease;
+}
+/* Keep live external heart rate visible while song telemetry is unavailable. */
+.overlay-preview.custom-layout-canvas.has-independent-heart-rate:is(.is-awaiting-data, .is-ended) {
+  opacity: 1;
+}
+.custom-layout-canvas.has-independent-heart-rate:is(.is-awaiting-data, .is-ended) > .layout-item:not([data-layout-item="heartRate"]) {
+  display: none;
 }
 .custom-layout-canvas > :not(.layout-item):not(.layout-selection):not(.layout-guides):not(.layout-marquee) { display: none; }
 .layout-item { position: absolute; width: max-content; min-width: 40px; min-height: 28px; transform-origin: center; }
@@ -2530,7 +2537,7 @@ body:not(.overlay-mode) .layout-item:empty::after { content: '—'; }
 .layout-handle--se { right: 0; bottom: 0; transform: translate(50%,50%); cursor: nwse-resize; }
 .layout-handle--rotate { left: 50%; top: calc(-3 * var(--handle-size)); border-radius: 50%; cursor: grab; }
 
-body:not(.overlay-mode) .custom-layout-stage { aspect-ratio: 16 / 9; align-self: center; }
+body:not(.overlay-mode) .custom-layout-stage { aspect-ratio: var(--canvas-ratio, 16 / 9); align-self: center; }
 body:not(.overlay-mode) .layout-placeholder::after { content: attr(data-label); font-size: 14px; opacity: .6; }
 .layout-handle--rotate { top: auto; bottom: calc(-3 * var(--handle-size)); }
 
@@ -2572,3 +2579,21 @@ body:not(.overlay-mode) .layout-placeholder::after { content: attr(data-label); 
 body:not(.overlay-mode) .custom-layout-stage { touch-action: none; user-select: none; }
 
 .layout-history-actions { display: flex; gap: 6px; margin-right: auto; }
+
+/* Orientation and reference backgrounds belong to the editor, never the output. */
+.orientation-picker { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.orientation-picker button { display: grid; justify-items: center; align-content: center; gap: 7px; min-height: 100px; padding: 12px 6px; border: 1px solid var(--line-soft); border-radius: 12px; background: var(--control); color: var(--text); cursor: pointer; }
+.orientation-picker button[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--control)); }
+.orientation-picker button:hover { border-color: var(--accent); }
+.orientation-picker button:focus-visible, .background-upload:focus-within { outline: 2px solid var(--accent); outline-offset: 3px; }
+.orientation-picker b { font-size: .76rem; }
+.orientation-picker small, .canvas-background-hint { color: var(--muted); font-size: .65rem; line-height: 1.5; }
+.orientation-icon { width: 30px; height: 17px; border: 2px solid currentColor; border-radius: 3px; }
+.orientation-icon--vertical { width: 17px; height: 30px; }
+.background-upload { display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+#clear-canvas-background { margin-top: 8px; }
+.canvas-background-hint { margin-top: 10px; }
+body:not(.overlay-mode) .preview-stage { box-sizing: content-box; min-height: 0; align-self: center; justify-self: center; }
+body:not(.overlay-mode) .preview-stage.has-reference-background { background-image: var(--reference-background); background-size: 100% 100%; background-position: center; border-radius: 0; box-shadow: none; }
+body .overlay-preview:not(.custom-layout-canvas) { width: 760px; }
+body .overlay-preview.has-paired-heart-rate:not(.custom-layout-canvas) { width: 880px; }
