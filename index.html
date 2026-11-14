@@ -66,9 +66,27 @@
         <p class="connection-advice" id="connection-advice" hidden>For best performance, only use one song overlay.</p>
       </div>
 
+      <section class="setting-section" aria-labelledby="orientation-heading">
+        <div class="section-heading">
+          <h2 id="orientation-heading">Orientation</h2>
+          <p>Each canvas remembers its layout and presets.</p>
+        </div>
+        <div class="orientation-picker" role="group" aria-label="Canvas orientation">
+          <button type="button" data-orientation="horizontal" aria-pressed="true">
+            <span class="orientation-icon" aria-hidden="true"></span>
+            <b>Horizontal</b><small>16:9 · 1920 × 1080</small>
+          </button>
+          <button type="button" data-orientation="vertical" aria-pressed="false">
+            <span class="orientation-icon orientation-icon--vertical" aria-hidden="true"></span>
+            <b>Vertical</b><small>9:16 · 1080 × 1920</small>
+          </button>
+        </div>
+        <p id="orientation-message" class="layout-preset-message is-error" role="status" hidden></p>
+      </section>
+
       <section class="setting-section" aria-labelledby="position-heading">
         <div class="section-heading">
-          <h2 id="position-heading">Position</h2>
+          <h2 id="position-heading">Layout presets</h2>
           <p>Choose where the overlay sits on the canvas.</p>
         </div>
 
@@ -88,6 +106,54 @@
             <span class="corner corner--bottom-right"></span>
           </button>
         </div>
+        <button type="button" class="toolbar-button" id="custom-layout" aria-pressed="false">Custom layout</button>
+        <div id="layout-editor" hidden>
+          <div class="layout-presets" id="layout-presets" role="group" aria-label="Saved custom layouts"></div>
+          <p class="layout-preset-message" id="layout-preset-message" role="status" hidden></p>
+          <div class="layout-selected-chip" role="status">
+            <span>Selected element</span>
+            <strong id="layout-selected-name">Cover art, time &amp; indicators</strong>
+          </div>
+          <div class="layout-properties">
+            <label>X <input id="layout-x" type="number" step="1"></label>
+            <label>Y <input id="layout-y" type="number" step="1"></label>
+            <label>Scale % <input id="layout-scale" type="number" min="10" max="500" step="1"></label>
+            <label>Rotation ° <input id="layout-angle" type="number" min="-180" max="180" step="1"></label>
+          </div>
+          <div class="layout-reset-actions" role="group" aria-label="Layout actions">
+            <div class="layout-history-actions">
+              <button type="button" class="layout-icon-button" id="layout-undo" aria-label="Undo" title="Undo (Ctrl+Z)" disabled>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 4 3 9l5 5M3 9h11a6 6 0 0 1 0 12" /></svg>
+              </button>
+              <button type="button" class="layout-icon-button" id="layout-redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled>
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m16 4 5 5-5 5M21 9H10a6 6 0 0 0 0 12" /></svg>
+              </button>
+            </div>
+            <button type="button" class="layout-icon-button" id="layout-reset" aria-label="Reset selected element" title="Reset selected element">
+              <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <path d="M7 10a11 11 0 1 1-2 10M7 4v6h6" />
+              </svg>
+            </button>
+            <button type="button" class="layout-icon-button" id="layout-reset-all" aria-label="Reset all elements" title="Reset all elements">
+              <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
+                <path d="M7 10a11 11 0 1 1-2 10M7 4v6h6" />
+                <text x="16" y="19">ALL</text>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="setting-section" aria-labelledby="background-heading">
+        <div class="section-heading">
+          <h2 id="background-heading">Background</h2>
+          <p>Use a screenshot of your stream to position elements. Only visible in this editor.</p>
+        </div>
+        <button type="button" class="background-upload toolbar-button" id="upload-canvas-background">Upload image</button>
+        <input id="canvas-background" hidden type="file" accept="image/png,image/jpeg,image/webp" />
+        <button type="button" class="toolbar-button" id="clear-canvas-background" hidden>Remove background</button>
+        <p id="canvas-background-hint" class="canvas-background-hint"></p>
+        <p id="canvas-background-message" class="layout-preset-message" role="status" hidden></p>
       </section>
 
       <section class="setting-section" aria-labelledby="style-heading">
@@ -142,7 +208,7 @@
         <label class="type-control type-control--range" for="overlay-scale">
           <span><b>Overlay scale</b><output id="overlay-scale-value" for="overlay-scale">100%</output></span>
           <input type="range" id="overlay-scale" min="50" max="200" step="5" value="100" />
-          <small>100% matches 1080p DPI scaling</small>
+          <small id="overlay-scale-help">100% matches 1080p DPI scaling</small>
         </label>
 
         <label class="toggle-row">
@@ -591,6 +657,8 @@
     </div>
   </dialog>
 
+  <script src="layout.js"></script>
+  <script src="canvas.js"></script>
   <script src="app.js"></script>
 </body>
 
